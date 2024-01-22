@@ -8,3 +8,4 @@ void initVulkan();
 void mainloop();
 void cleanup();
 GLFWwindow *getWindow();
+void handleError();

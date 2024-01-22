@@ -1,7 +1,10 @@
 #include "vkTutorial.h"
 
+extern GLFWwindow *window;
+extern VkInstance instance;
+
 void cleanup() {
-  GLFWwindow *window = getWindow();
+  vkDestroyInstance(instance, NULL);
   glfwDestroyWindow(window);
   glfwTerminate();
 }

@@ -5,7 +5,7 @@
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
-static GLFWwindow *window;
+GLFWwindow *window;
 
 // print error messages
 static void error_callback(int error, const char *description) {
@@ -46,5 +46,3 @@ void mainloop() {
     glfwPollEvents();
   }
 }
-
-GLFWwindow *getWindow() { return window; }
