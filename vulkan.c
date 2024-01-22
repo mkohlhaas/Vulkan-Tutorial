@@ -5,6 +5,8 @@
 #include <vulkan/vulkan_core.h>
 
 extern VkResult err;
+extern const char *requiredValidationLayers[];
+extern int numRequiredValidationLayers;
 
 VkInstance instance;
 
@@ -28,6 +30,8 @@ void createInstance() {
       .pApplicationInfo = &appInfo,
       .enabledExtensionCount = glfwExtensionCount,
       .ppEnabledExtensionNames = glfwExtensions,
+      .enabledLayerCount = numRequiredValidationLayers,
+      .ppEnabledLayerNames = requiredValidationLayers,
   };
   printf("GLFW required extensions:\n");
   for (int i = 0; i < glfwExtensionCount; i++) {
@@ -48,17 +52,20 @@ void createInstance() {
   }
 
   // check if all required extensions are available
-  int nFound = 0;
+  int found = 0;
   for (int i = 0; i < glfwExtensionCount; i++) {
     for (int j = 0; j < propertyCount; j++) {
       if (!strcmp(glfwExtensions[i], extensions[j].extensionName)) {
-        nFound++;
+        found++;
         break;
       }
     }
   }
-  err = nFound == glfwExtensionCount ? VK_SUCCESS : VK_ERROR_EXTENSION_NOT_PRESENT;
+  err = found == glfwExtensionCount ? VK_SUCCESS : VK_ERROR_EXTENSION_NOT_PRESENT;
   handleError();
 }
 
-void initVulkan() { createInstance(); }
+void initVulkan() {
+  createInstance();
+  checkValidationLayerSupport();
+}

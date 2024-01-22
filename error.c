@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-VkResult err;
+int err;
 
 void handleError() {
   if (err) {
@@ -150,6 +150,9 @@ void handleError() {
       break;
     case VK_RESULT_MAX_ENUM:
       printf("Error: result max enum\n");
+      break;
+    case VKT_ERROR_VALIDATIONLAYER_NOT_PRESENT:
+      printf("Validation layer not present\n");
       break;
     };
     exit(EXIT_FAILURE);
