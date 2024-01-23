@@ -13,3 +13,4 @@ void cleanup();
 GLFWwindow *getWindow();
 void handleError();
 bool checkValidationLayerSupport();
+void destroyDebugUtilsMessenger(VkInstance, VkDebugUtilsMessengerEXT, const VkAllocationCallbacks*);

@@ -9,5 +9,5 @@ find_package(glfw3 REQUIRED)
 # add_library(glad SHARED glad.c)
 # target_include_directories(glad PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(${PROJECT_NAME} cleanup.c main.c vulkan.c window.c cleanup.c main.c vulkan.c window.c error.c validation.c)
+add_executable(${PROJECT_NAME} cleanup.c main.c vulkan.c window.c cleanup.c main.c vulkan.c window.c error.c)
 target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw)
