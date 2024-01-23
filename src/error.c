@@ -151,7 +151,7 @@ void handleError() {
     case VK_RESULT_MAX_ENUM:
       printf("Error: result max enum\n");
       break;
-    case VKT_ERROR_VALIDATIONLAYER_NOT_PRESENT:
+    case VKT_ERROR_VALIDATIONLAYER_NOT_AVAILABLE:
       printf("Error: Validation layer not present\n");
       break;
     case VKT_ERROR_NO_VULKAN_DEVICE_AVAILABLE:
@@ -159,6 +159,9 @@ void handleError() {
       break;
     case VKT_ERROR_NO_SUITABLE_GPU_AVAILABLE:
       printf("Error: Failed to find a suitable GPU\n");
+      break;
+    case VKT_ERROR_DEVICE_EXTENSIONS_NOT_AVAILABLE :
+      printf("Error: Extension not present\n");
       break;
     };
     exit(EXIT_FAILURE);

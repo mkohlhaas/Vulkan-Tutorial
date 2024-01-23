@@ -15,9 +15,17 @@ VkDevice device;
 VkQueue graphicsQueue;
 VkSurfaceKHR surface;
 
+// VkSurfaceCapabilitiesKHR
+// VkSurfaceFormatKHR
+// VkPresentModeKHR
+
 // required validation layers
 const char *requiredValidationLayers[] = {"VK_LAYER_KHRONOS_validation"};
 int requiredValidationLayersCount = sizeof(requiredValidationLayers) / sizeof(char *);
+
+// required device extensions
+const char *requiredDeviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+int requiredDeviceExtensionsCount = sizeof(requiredDeviceExtensions) / sizeof(char *);
 
 extern VkResult err;
 
@@ -124,7 +132,7 @@ bool checkValidationLayerSupport() {
     }
   }
   bool allLayersAvailable = found == requiredValidationLayersCount;
-  err = allLayersAvailable ? VK_SUCCESS : VKT_ERROR_VALIDATIONLAYER_NOT_PRESENT;
+  err = allLayersAvailable ? VK_SUCCESS : VKT_ERROR_VALIDATIONLAYER_NOT_AVAILABLE;
   handleError();
 
   printf("\nAll validation layers are available: true\n");
@@ -194,10 +202,37 @@ bool isPhysicalDeviceSuitable(VkPhysicalDevice device) {
   // print physical device info
   fprintf(stderr, "\nPhysical Device:\n  Device ID: %u\n  Device Name: %s\n", deviceProperties.deviceID, deviceProperties.deviceName);
 
+  // get device extensions
+  uint32_t extensionCount;
+  vkEnumerateDeviceExtensionProperties(device, NULL, &extensionCount, NULL);
+  VkExtensionProperties availableDeviceExtensions[extensionCount];
+  vkEnumerateDeviceExtensionProperties(device, NULL, &extensionCount, availableDeviceExtensions);
+
+  // print device extensions
+  fprintf(stderr, "  Extensions:\n");
+  for (int i = 0; i < extensionCount; i++) {
+    fprintf(stderr, "    %s\n", availableDeviceExtensions[i].extensionName);
+  }
+
+  // check if required extensions are available
+  int found = 0;
+  for (int i = 0; i < requiredDeviceExtensionsCount; i++) {
+    for (int j = 0; j < extensionCount; j++) {
+      if (!strcmp(requiredDeviceExtensions[i], availableDeviceExtensions[j].extensionName)) {
+        found++;
+        break;
+      }
+    }
+  }
+  bool allExtensionsAvailable = found == requiredDeviceExtensionsCount;
+  err = allExtensionsAvailable ? VK_SUCCESS : VKT_ERROR_DEVICE_EXTENSIONS_NOT_AVAILABLE;
+  handleError();
+  printf("  All required device extensions are available: true\n");
+
   return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader;
 }
 
-int firstGraphicsQueueIndex() {
+int firstGraphicsQueueFamilyIndex() {
   int result = -1;
   uint32_t queueFamilyCount;
   vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, NULL);
@@ -205,12 +240,12 @@ int firstGraphicsQueueIndex() {
   VkQueueFamilyProperties queueFamilies[queueFamilyCount];
   vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies);
 
-  VkBool32 presentSupport = VK_FALSE;
+  VkBool32 surfaceSupport = VK_FALSE;
   for (int i = 0; i < queueFamilyCount; i++) {
     if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-      vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &presentSupport);
-      if (presentSupport) {
-        fprintf(stderr, "\nIndex of first graphics family queue: %d\n", i);
+      vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &surfaceSupport);
+      if (surfaceSupport) {
+        fprintf(stderr, "\nFirst graphics queue family index: %d\n", i);
         result = i;
         break;
       }
@@ -293,15 +328,15 @@ void pickPhysicalDevice() {
   }
 
   // bail out if no suitable physical device available
-  if (physicalDevice == VK_NULL_HANDLE) {
+  if (!physicalDevice) {
     err = VKT_ERROR_NO_SUITABLE_GPU_AVAILABLE;
     handleError();
   }
 }
 
 void createLogicalDevice() {
+  int queueFamilyIndex = firstGraphicsQueueFamilyIndex();
   float queuePriority = 1.0f;
-  int queueFamilyIndex = firstGraphicsQueueIndex();
   VkDeviceQueueCreateInfo deviceQueueCreateInfo = {
       .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
       .queueFamilyIndex = queueFamilyIndex,
@@ -313,6 +348,8 @@ void createLogicalDevice() {
       .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
       .queueCreateInfoCount = 1,
       .pQueueCreateInfos = &deviceQueueCreateInfo,
+      .enabledExtensionCount = requiredDeviceExtensionsCount,
+      .ppEnabledExtensionNames = requiredDeviceExtensions,
   };
 
   err = vkCreateDevice(physicalDevice, &deviceCreateInfo, NULL, &device);
