@@ -152,7 +152,10 @@ void handleError() {
       printf("Error: result max enum\n");
       break;
     case VKT_ERROR_VALIDATIONLAYER_NOT_PRESENT:
-      printf("Validation layer not present\n");
+      printf("Error: Validation layer not present\n");
+      break;
+    case VKT_ERROR_NO_VULKAN_DEVICE_AVAILABLE:
+      printf("Error: Failed to find GPUs with Vulkan support\n");
       break;
     };
     exit(EXIT_FAILURE);
