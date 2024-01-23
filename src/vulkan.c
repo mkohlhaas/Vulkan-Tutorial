@@ -13,6 +13,7 @@ VkDebugUtilsMessengerEXT debugMessenger;
 VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 VkDevice device;
 VkQueue graphicsQueue;
+VkSurfaceKHR surface;
 
 // required validation layers
 const char *requiredValidationLayers[] = {"VK_LAYER_KHRONOS_validation"};
@@ -204,11 +205,15 @@ int firstGraphicsQueueIndex() {
   VkQueueFamilyProperties queueFamilies[queueFamilyCount];
   vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies);
 
+  VkBool32 presentSupport = VK_FALSE;
   for (int i = 0; i < queueFamilyCount; i++) {
     if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-      fprintf(stderr, "\nIndex of first graphics family queue: %d\n", i);
-      result = i;
-      break;
+      vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &presentSupport);
+      if (presentSupport) {
+        fprintf(stderr, "\nIndex of first graphics family queue: %d\n", i);
+        result = i;
+        break;
+      }
     }
   }
 
@@ -315,9 +320,15 @@ void createLogicalDevice() {
   vkGetDeviceQueue(device, queueFamilyIndex, 0, &graphicsQueue);
 }
 
+void createSurface() {
+  err = glfwCreateWindowSurface(instance, window, NULL, &surface);
+  handleError();
+}
+
 void cleanup() {
   vkDestroyDevice(device, NULL);
   destroyDebugUtilsMessenger(instance, debugMessenger, NULL);
+  vkDestroySurfaceKHR(instance, surface, NULL);
   vkDestroyInstance(instance, NULL);
   glfwDestroyWindow(window);
   glfwTerminate();
@@ -327,6 +338,7 @@ void initVulkan() {
   createInstance();
   checkValidationLayerSupport();
   setupDebugMessenger();
+  createSurface();
   pickPhysicalDevice();
   printQueueFamilies();
   createLogicalDevice();
