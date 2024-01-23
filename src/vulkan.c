@@ -5,10 +5,14 @@
 #include <string.h>
 #include <vulkan/vulkan_core.h>
 
+extern GLFWwindow *window;
+
 // Vulkan objects
 VkInstance instance;
 VkDebugUtilsMessengerEXT debugMessenger;
 VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+VkDevice device;
+VkQueue graphicsQueue;
 
 // required validation layers
 const char *requiredValidationLayers[] = {"VK_LAYER_KHRONOS_validation"};
@@ -122,7 +126,7 @@ bool checkValidationLayerSupport() {
   err = allLayersAvailable ? VK_SUCCESS : VKT_ERROR_VALIDATIONLAYER_NOT_PRESENT;
   handleError();
 
-  printf("\nAll validation layers are present: true\n");
+  printf("\nAll validation layers are available: true\n");
   return true;
 }
 
@@ -174,7 +178,7 @@ void createInstance() {
   }
   err = found == requiredExtensionsCount ? VK_SUCCESS : VK_ERROR_EXTENSION_NOT_PRESENT;
   handleError();
-  printf("\nAll required extensions are present: true\n");
+  printf("\nAll required extensions are available: true\n");
 
   free(requiredExtensions);
 }
@@ -187,9 +191,32 @@ bool isPhysicalDeviceSuitable(VkPhysicalDevice device) {
   vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
 
   // print physical device info
-  fprintf(stderr, "Physical Device:\n  Device ID: %u\n  Device Name: %s\n", deviceProperties.deviceID, deviceProperties.deviceName);
+  fprintf(stderr, "\nPhysical Device:\n  Device ID: %u\n  Device Name: %s\n", deviceProperties.deviceID, deviceProperties.deviceName);
 
   return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader;
+}
+
+int firstGraphicsQueueIndex() {
+  int result = -1;
+  uint32_t queueFamilyCount;
+  vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, NULL);
+
+  VkQueueFamilyProperties queueFamilies[queueFamilyCount];
+  vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies);
+
+  for (int i = 0; i < queueFamilyCount; i++) {
+    if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+      fprintf(stderr, "\nIndex of first graphics family queue: %d\n", i);
+      result = i;
+      break;
+    }
+  }
+
+  if (result == -1) {
+    err = VKT_ERROR_NO_SUITABLE_GPU_AVAILABLE;
+    handleError();
+  }
+  return result;
 }
 
 QueueFamilyIndices printQueueFamilies() {
@@ -262,9 +289,38 @@ void pickPhysicalDevice() {
 
   // bail out if no suitable physical device available
   if (physicalDevice == VK_NULL_HANDLE) {
-    err = VKT_ERROR_NO_SUITIABLE_GPU_AVAILABLE;
+    err = VKT_ERROR_NO_SUITABLE_GPU_AVAILABLE;
     handleError();
   }
+}
+
+void createLogicalDevice() {
+  float queuePriority = 1.0f;
+  int queueFamilyIndex = firstGraphicsQueueIndex();
+  VkDeviceQueueCreateInfo deviceQueueCreateInfo = {
+      .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+      .queueFamilyIndex = queueFamilyIndex,
+      .queueCount = 1,
+      .pQueuePriorities = &queuePriority,
+  };
+
+  VkDeviceCreateInfo deviceCreateInfo = {
+      .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+      .queueCreateInfoCount = 1,
+      .pQueueCreateInfos = &deviceQueueCreateInfo,
+  };
+
+  err = vkCreateDevice(physicalDevice, &deviceCreateInfo, NULL, &device);
+  handleError();
+  vkGetDeviceQueue(device, queueFamilyIndex, 0, &graphicsQueue);
+}
+
+void cleanup() {
+  vkDestroyDevice(device, NULL);
+  destroyDebugUtilsMessenger(instance, debugMessenger, NULL);
+  vkDestroyInstance(instance, NULL);
+  glfwDestroyWindow(window);
+  glfwTerminate();
 }
 
 void initVulkan() {
@@ -273,4 +329,5 @@ void initVulkan() {
   setupDebugMessenger();
   pickPhysicalDevice();
   printQueueFamilies();
+  createLogicalDevice();
 }

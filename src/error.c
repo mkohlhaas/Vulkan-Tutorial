@@ -157,6 +157,9 @@ void handleError() {
     case VKT_ERROR_NO_VULKAN_DEVICE_AVAILABLE:
       printf("Error: Failed to find GPUs with Vulkan support\n");
       break;
+    case VKT_ERROR_NO_SUITABLE_GPU_AVAILABLE:
+      printf("Error: Failed to find a suitable GPU\n");
+      break;
     };
     exit(EXIT_FAILURE);
   }
