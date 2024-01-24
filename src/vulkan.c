@@ -17,10 +17,11 @@ VkQueue graphicsQueue;
 VkSurfaceKHR surface;
 
 VkSwapchainKHR swapChain;
-VkImage *swapChainImages;
+VkImage *swapchainImages;
 uint32_t swapchainImagesCount;
 VkFormat swapchainImageFormat;
 VkExtent2D swapchainExtent;
+VkImageView *swapchainImageViews;
 
 // required validation layers
 const char *requiredValidationLayers[] = {"VK_LAYER_KHRONOS_validation"};
@@ -274,8 +275,8 @@ void createSwapChain() {
   // swapchain images
   err = vkGetSwapchainImagesKHR(device, swapChain, &swapchainImagesCount, NULL);
   handleError();
-  swapChainImages = malloc(swapchainImagesCount * sizeof(VkImage));
-  err = vkGetSwapchainImagesKHR(device, swapChain, &swapchainImagesCount, swapChainImages);
+  swapchainImages = malloc(swapchainImagesCount * sizeof(VkImage));
+  err = vkGetSwapchainImagesKHR(device, swapChain, &swapchainImagesCount, swapchainImages);
   handleError();
 }
 
@@ -456,7 +457,32 @@ void createSurface() {
   handleError();
 }
 
+void createImageViews() {
+  swapchainImageViews = malloc(swapchainImagesCount * sizeof(VkImageView));
+  for (size_t i = 0; i < swapchainImagesCount; i++) {
+    VkImageViewCreateInfo imageViewCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = swapchainImages[i],
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = swapchainImageFormat,
+        .components.r = VK_COMPONENT_SWIZZLE_IDENTITY,
+        .components.g = VK_COMPONENT_SWIZZLE_IDENTITY,
+        .components.b = VK_COMPONENT_SWIZZLE_IDENTITY,
+        .components.a = VK_COMPONENT_SWIZZLE_IDENTITY,
+        .subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .subresourceRange.baseMipLevel = 0,
+        .subresourceRange.levelCount = 1,
+        .subresourceRange.baseArrayLayer = 0,
+        .subresourceRange.layerCount = 1,
+    };
+    err = vkCreateImageView(device, &imageViewCreateInfo, NULL, &swapchainImageViews[i]);
+    handleError();
+  }
+}
 void cleanup() {
+  for (int i = 0; i < swapchainImagesCount; i++) {
+    vkDestroyImageView(device, swapchainImageViews[i], NULL);
+  }
   vkDestroySwapchainKHR(device, swapChain, NULL);
   vkDestroyDevice(device, NULL);
   destroyDebugUtilsMessenger(instance, debugMessenger, NULL);
@@ -475,4 +501,6 @@ void initVulkan() {
   printQueueFamilies();
   createLogicalDevice();
   createSwapChain();
+  createImageViews();
 }
+
