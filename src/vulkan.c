@@ -1,5 +1,6 @@
 #include "vkTutorial.h"
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,9 +16,11 @@ VkDevice device;
 VkQueue graphicsQueue;
 VkSurfaceKHR surface;
 
-// VkSurfaceCapabilitiesKHR
-// VkSurfaceFormatKHR
-// VkPresentModeKHR
+VkSwapchainKHR swapChain;
+VkImage *swapChainImages;
+uint32_t swapchainImagesCount;
+VkFormat swapchainImageFormat;
+VkExtent2D swapchainExtent;
 
 // required validation layers
 const char *requiredValidationLayers[] = {"VK_LAYER_KHRONOS_validation"};
@@ -72,34 +75,34 @@ void destroyDebugUtilsMessenger(VkInstance instance, VkDebugUtilsMessengerEXT de
   }
 }
 
-static const char **getRequiredExtensions(uint32_t *count) {
+static const char **getRequiredExtensions(uint32_t *requiredExtensionsCount) {
   // get required GLFW extensions
   const char **glfwExtensions;
-  glfwExtensions = glfwGetRequiredInstanceExtensions(count);
+  glfwExtensions = glfwGetRequiredInstanceExtensions(requiredExtensionsCount);
 
   // print GLFW extensions
   printf("GLFW extensions:\n");
-  for (int i = 0; i < *count; i++) {
+  for (int i = 0; i < *requiredExtensionsCount; i++) {
     printf("  %s\n", glfwExtensions[i]);
   }
 
   // setup required extensions
-  const char **requiredExtensions = malloc(*count * sizeof(char *));
+  const char **requiredExtensions = malloc(*requiredExtensionsCount * sizeof(char *));
 
   // add debug extension as last element
-  requiredExtensions[*count] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+  requiredExtensions[*requiredExtensionsCount] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
 
   // copy GLFW extensions into required extensions
-  for (int i = 0; i < *count; i++) {
+  for (int i = 0; i < *requiredExtensionsCount; i++) {
     requiredExtensions[i] = glfwExtensions[i];
   }
 
   // update number of required extensions
-  (*count)++;
+  (*requiredExtensionsCount)++;
 
   // print required extensions
   printf("\nRequired extensions:\n");
-  for (int i = 0; i < *count; i++) {
+  for (int i = 0; i < *requiredExtensionsCount; i++) {
     printf("  %s\n", requiredExtensions[i]);
   }
 
@@ -192,18 +195,24 @@ void createInstance() {
   free(requiredExtensions);
 }
 
-void checkSwapChainSupport() {
+void createSwapChain() {
   fprintf(stderr, "  Swap Chain Support:\n");
+
+  // surface capabilities
   fprintf(stderr, "    Surface Capabilities:\n");
   VkSurfaceCapabilitiesKHR surfaceCapabilities;
   err = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities);
   handleError();
   fprintf(
       stderr,
-      "      Min image count: %u\n      Max image count: %u\n      Max image array layers: %u\n      Current width: %u\n      Current height: %u\n",
+      "      Min image count: %u\n      Max image count: %u (0 means ∞)\n      Max image array layers: %u\n      Current width: %u\n      Current "
+      "height: %u\n",
       surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount, surfaceCapabilities.maxImageArrayLayers,
       surfaceCapabilities.currentExtent.width, surfaceCapabilities.currentExtent.height);
+  fprintf(stderr, "      Max image width: %u\n      Max image height: %u\n", surfaceCapabilities.maxImageExtent.width,
+          surfaceCapabilities.maxImageExtent.height);
 
+  // surface formats
   uint32_t formatCount;
   err = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, NULL);
   handleError();
@@ -213,12 +222,12 @@ void checkSwapChainSupport() {
   fprintf(stderr, "    Surface formats: %u\n", formatCount);
 
   for (int i = 0; i < formatCount; i++) {
-    // if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
     if (surfaceFormats[i].format == VK_FORMAT_B8G8R8A8_SRGB && surfaceFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-      fprintf(stderr, "      Special surface format found (B8G8R8A8 and nonlinear color space ).\n");
+      fprintf(stderr, "      Special surface format found (8Bit colors and nonlinear color space).\n");
     }
   }
 
+  // present modes
   uint32_t presentModeCount;
   err = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, NULL);
   handleError();
@@ -228,7 +237,6 @@ void checkSwapChainSupport() {
   fprintf(stderr, "    Surface present modes: %u\n", presentModeCount);
 
   for (int i = 0; i < presentModeCount; i++) {
-    // if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
     if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
       fprintf(stderr, "      Mailbox present mode found.\n");
     }
@@ -238,6 +246,37 @@ void checkSwapChainSupport() {
     err = VKT_ERROR_SWAP_CHAIN_NOT_ADEQUATE;
     handleError();
   }
+
+  // create swapchain
+  swapchainImagesCount = surfaceCapabilities.minImageCount + 1;
+  swapchainImageFormat = surfaceFormats[0].format;
+  swapchainExtent = surfaceCapabilities.currentExtent;
+  VkSwapchainCreateInfoKHR swapchainCreateInfo = {
+      .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+      .surface = surface,
+      .minImageCount = swapchainImagesCount,
+      .imageFormat = swapchainImageFormat,
+      .imageColorSpace = surfaceFormats[0].colorSpace,
+      .imageExtent = swapchainExtent,
+      .imageArrayLayers = 1,
+      .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+      .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
+      .preTransform = surfaceCapabilities.currentTransform,
+      .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+      .presentMode = VK_PRESENT_MODE_FIFO_KHR,
+      .clipped = VK_TRUE,
+      .oldSwapchain = VK_NULL_HANDLE,
+  };
+
+  err = vkCreateSwapchainKHR(device, &swapchainCreateInfo, NULL, &swapChain);
+  handleError();
+
+  // swapchain images
+  err = vkGetSwapchainImagesKHR(device, swapChain, &swapchainImagesCount, NULL);
+  handleError();
+  swapChainImages = malloc(swapchainImagesCount * sizeof(VkImage));
+  err = vkGetSwapchainImagesKHR(device, swapChain, &swapchainImagesCount, swapChainImages);
+  handleError();
 }
 
 bool isPhysicalDeviceSuitable(VkPhysicalDevice device) {
@@ -418,6 +457,7 @@ void createSurface() {
 }
 
 void cleanup() {
+  vkDestroySwapchainKHR(device, swapChain, NULL);
   vkDestroyDevice(device, NULL);
   destroyDebugUtilsMessenger(instance, debugMessenger, NULL);
   vkDestroySurfaceKHR(instance, surface, NULL);
@@ -433,6 +473,6 @@ void initVulkan() {
   createSurface();
   pickPhysicalDevice();
   printQueueFamilies();
-  checkSwapChainSupport();
   createLogicalDevice();
+  createSwapChain();
 }
