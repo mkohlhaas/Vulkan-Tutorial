@@ -198,8 +198,11 @@ void checkSwapChainSupport() {
   VkSurfaceCapabilitiesKHR surfaceCapabilities;
   err = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities);
   handleError();
-  fprintf(stderr, "      Min image count: %u\n      Max image count: %u\n      Max image array layers: %u\n", surfaceCapabilities.minImageCount,
-          surfaceCapabilities.maxImageCount, surfaceCapabilities.maxImageArrayLayers);
+  fprintf(
+      stderr,
+      "      Min image count: %u\n      Max image count: %u\n      Max image array layers: %u\n      Current width: %u\n      Current height: %u\n",
+      surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount, surfaceCapabilities.maxImageArrayLayers,
+      surfaceCapabilities.currentExtent.width, surfaceCapabilities.currentExtent.height);
 
   uint32_t formatCount;
   err = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, NULL);
@@ -209,6 +212,13 @@ void checkSwapChainSupport() {
   handleError();
   fprintf(stderr, "    Surface formats: %u\n", formatCount);
 
+  for (int i = 0; i < formatCount; i++) {
+    // if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+    if (surfaceFormats[i].format == VK_FORMAT_B8G8R8A8_SRGB && surfaceFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+      fprintf(stderr, "      Special surface format found (B8G8R8A8 and nonlinear color space ).\n");
+    }
+  }
+
   uint32_t presentModeCount;
   err = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, NULL);
   handleError();
@@ -216,6 +226,13 @@ void checkSwapChainSupport() {
   err = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentModes);
   handleError();
   fprintf(stderr, "    Surface present modes: %u\n", presentModeCount);
+
+  for (int i = 0; i < presentModeCount; i++) {
+    // if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+    if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
+      fprintf(stderr, "      Mailbox present mode found.\n");
+    }
+  }
 
   if (formatCount == 0 && presentModeCount == 0) {
     err = VKT_ERROR_SWAP_CHAIN_NOT_ADEQUATE;
