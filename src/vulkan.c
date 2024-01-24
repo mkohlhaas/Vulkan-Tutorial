@@ -192,6 +192,37 @@ void createInstance() {
   free(requiredExtensions);
 }
 
+void checkSwapChainSupport() {
+  fprintf(stderr, "  Swap Chain Support:\n");
+  fprintf(stderr, "    Surface Capabilities:\n");
+  VkSurfaceCapabilitiesKHR surfaceCapabilities;
+  err = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities);
+  handleError();
+  fprintf(stderr, "      Min image count: %u\n      Max image count: %u\n      Max image array layers: %u\n", surfaceCapabilities.minImageCount,
+          surfaceCapabilities.maxImageCount, surfaceCapabilities.maxImageArrayLayers);
+
+  uint32_t formatCount;
+  err = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, NULL);
+  handleError();
+  VkSurfaceFormatKHR surfaceFormats[formatCount];
+  err = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, surfaceFormats);
+  handleError();
+  fprintf(stderr, "    Surface formats: %u\n", formatCount);
+
+  uint32_t presentModeCount;
+  err = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, NULL);
+  handleError();
+  VkPresentModeKHR presentModes[presentModeCount];
+  err = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentModes);
+  handleError();
+  fprintf(stderr, "    Surface present modes: %u\n", presentModeCount);
+
+  if (formatCount == 0 && presentModeCount == 0) {
+    err = VKT_ERROR_SWAP_CHAIN_NOT_ADEQUATE;
+    handleError();
+  }
+}
+
 bool isPhysicalDeviceSuitable(VkPhysicalDevice device) {
   // get device properties and features
   VkPhysicalDeviceProperties deviceProperties;
@@ -208,8 +239,14 @@ bool isPhysicalDeviceSuitable(VkPhysicalDevice device) {
   VkExtensionProperties availableDeviceExtensions[extensionCount];
   vkEnumerateDeviceExtensionProperties(device, NULL, &extensionCount, availableDeviceExtensions);
 
-  // print device extensions
-  fprintf(stderr, "  Extensions:\n");
+  // print required device extensions
+  fprintf(stderr, "  Required extensions:\n");
+  for (int i = 0; i < requiredDeviceExtensionsCount; i++) {
+    fprintf(stderr, "    %s\n", requiredDeviceExtensions[i]);
+  }
+
+  // print available device extensions
+  fprintf(stderr, "  Available extensions:\n");
   for (int i = 0; i < extensionCount; i++) {
     fprintf(stderr, "    %s\n", availableDeviceExtensions[i].extensionName);
   }
@@ -229,7 +266,8 @@ bool isPhysicalDeviceSuitable(VkPhysicalDevice device) {
   handleError();
   printf("  All required device extensions are available: true\n");
 
-  return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader;
+  return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU || deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
+  //  && deviceFeatures.geometryShader;
 }
 
 int firstGraphicsQueueFamilyIndex() {
@@ -378,5 +416,6 @@ void initVulkan() {
   createSurface();
   pickPhysicalDevice();
   printQueueFamilies();
+  checkSwapChainSupport();
   createLogicalDevice();
 }

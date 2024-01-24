@@ -160,8 +160,11 @@ void handleError() {
     case VKT_ERROR_NO_SUITABLE_GPU_AVAILABLE:
       printf("Error: Failed to find a suitable GPU\n");
       break;
-    case VKT_ERROR_DEVICE_EXTENSIONS_NOT_AVAILABLE :
+    case VKT_ERROR_DEVICE_EXTENSIONS_NOT_AVAILABLE:
       printf("Error: Extension not present\n");
+      break;
+    case VKT_ERROR_SWAP_CHAIN_NOT_ADEQUATE:
+      printf("Error: Swap chain not adequate\n");
       break;
     };
     exit(EXIT_FAILURE);
