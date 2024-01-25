@@ -22,6 +22,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw)
 add_custom_command(
   OUTPUT  vert.spv
   OUTPUT  frag.spv
+  COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders"
   COMMAND Vulkan::glslc shader.vert -o "$<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders/vert.spv"
   COMMAND Vulkan::glslc shader.frag -o "$<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders/frag.spv"
   WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/shaders"

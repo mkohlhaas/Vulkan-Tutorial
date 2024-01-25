@@ -7,6 +7,8 @@
 #include <string.h>
 #include <vulkan/vulkan_core.h>
 
+const int MAX_FRAMES_IN_FLIGHT = 2;
+
 extern GLFWwindow *window;
 
 // Vulkan objects
@@ -15,20 +17,24 @@ VkDebugUtilsMessengerEXT debugMessenger;
 VkSurfaceKHR surface;
 
 VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-VkDevice device;
+VkDevice logicalDevice;
 
 VkQueue graphicsQueue;
 
 VkSwapchainKHR swapChain;
-VkImage *swapchainImages;
-uint32_t swapchainImagesCount;
-VkFormat swapchainImageFormat;
-VkExtent2D swapchainExtent;
-VkImageView *swapchainImageViews;
+VkImage *swapChainImages;
+uint32_t swapChainImagesCount;
+VkFormat swapChainImageFormat;
+VkExtent2D swapChainExtent;
+VkImageView *swapChainImageViews;
 
 VkRenderPass renderPass;
 VkPipelineLayout pipelineLayout;
 VkPipeline graphicsPipeline;
+
+VkFramebuffer *swapChainFramebuffers;
+VkCommandPool commandPool;
+VkCommandBuffer *commandBuffers;
 
 // required validation layers
 const char *requiredValidationLayers[] = {"VK_LAYER_KHRONOS_validation"};
@@ -256,16 +262,16 @@ void createSwapChain() {
   }
 
   // create swapchain
-  swapchainImagesCount = surfaceCapabilities.minImageCount + 1;
-  swapchainImageFormat = surfaceFormats[0].format;
-  swapchainExtent = surfaceCapabilities.currentExtent;
+  swapChainImagesCount = surfaceCapabilities.minImageCount + 1;
+  swapChainImageFormat = surfaceFormats[0].format;
+  swapChainExtent = surfaceCapabilities.currentExtent;
   VkSwapchainCreateInfoKHR swapchainCreateInfo = {
       .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
       .surface = surface,
-      .minImageCount = swapchainImagesCount,
-      .imageFormat = swapchainImageFormat,
+      .minImageCount = swapChainImagesCount,
+      .imageFormat = swapChainImageFormat,
       .imageColorSpace = surfaceFormats[0].colorSpace,
-      .imageExtent = swapchainExtent,
+      .imageExtent = swapChainExtent,
       .imageArrayLayers = 1,
       .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
       .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
@@ -276,14 +282,14 @@ void createSwapChain() {
       .oldSwapchain = VK_NULL_HANDLE,
   };
 
-  err = vkCreateSwapchainKHR(device, &swapchainCreateInfo, NULL, &swapChain);
+  err = vkCreateSwapchainKHR(logicalDevice, &swapchainCreateInfo, NULL, &swapChain);
   handleError();
 
   // swapchain images
-  err = vkGetSwapchainImagesKHR(device, swapChain, &swapchainImagesCount, NULL);
+  err = vkGetSwapchainImagesKHR(logicalDevice, swapChain, &swapChainImagesCount, NULL);
   handleError();
-  swapchainImages = malloc(swapchainImagesCount * sizeof(VkImage));
-  err = vkGetSwapchainImagesKHR(device, swapChain, &swapchainImagesCount, swapchainImages);
+  swapChainImages = malloc(swapChainImagesCount * sizeof(VkImage));
+  err = vkGetSwapchainImagesKHR(logicalDevice, swapChain, &swapChainImagesCount, swapChainImages);
   handleError();
 }
 
@@ -454,9 +460,9 @@ void createLogicalDevice() {
       .ppEnabledExtensionNames = requiredDeviceExtensions,
   };
 
-  err = vkCreateDevice(physicalDevice, &deviceCreateInfo, NULL, &device);
+  err = vkCreateDevice(physicalDevice, &deviceCreateInfo, NULL, &logicalDevice);
   handleError();
-  vkGetDeviceQueue(device, queueFamilyIndex, 0, &graphicsQueue);
+  vkGetDeviceQueue(logicalDevice, queueFamilyIndex, 0, &graphicsQueue);
 }
 
 void createSurface() {
@@ -465,13 +471,13 @@ void createSurface() {
 }
 
 void createImageViews() {
-  swapchainImageViews = malloc(swapchainImagesCount * sizeof(VkImageView));
-  for (size_t i = 0; i < swapchainImagesCount; i++) {
+  swapChainImageViews = malloc(swapChainImagesCount * sizeof(VkImageView));
+  for (size_t i = 0; i < swapChainImagesCount; i++) {
     VkImageViewCreateInfo imageViewCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = swapchainImages[i],
+        .image = swapChainImages[i],
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = swapchainImageFormat,
+        .format = swapChainImageFormat,
         .components.r = VK_COMPONENT_SWIZZLE_IDENTITY,
         .components.g = VK_COMPONENT_SWIZZLE_IDENTITY,
         .components.b = VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -482,14 +488,14 @@ void createImageViews() {
         .subresourceRange.baseArrayLayer = 0,
         .subresourceRange.layerCount = 1,
     };
-    err = vkCreateImageView(device, &imageViewCreateInfo, NULL, &swapchainImageViews[i]);
+    err = vkCreateImageView(logicalDevice, &imageViewCreateInfo, NULL, &swapChainImageViews[i]);
     handleError();
   }
 }
 
 void createRenderPass() {
   VkAttachmentDescription colorAttachment = {
-      .format = swapchainImageFormat,
+      .format = swapChainImageFormat,
       .samples = VK_SAMPLE_COUNT_1_BIT,
       .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
       .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -518,7 +524,7 @@ void createRenderPass() {
       .pSubpasses = &subpass,
   };
 
-  vkCreateRenderPass(device, &renderPassInfo, NULL, &renderPass);
+  vkCreateRenderPass(logicalDevice, &renderPassInfo, NULL, &renderPass);
   handleError();
 }
 
@@ -530,7 +536,7 @@ VkShaderModule createShaderModule(gchar *code, gsize codeSize) {
   };
 
   VkShaderModule shaderModule;
-  err = vkCreateShaderModule(device, &createInfo, NULL, &shaderModule);
+  err = vkCreateShaderModule(logicalDevice, &createInfo, NULL, &shaderModule);
   handleError();
 
   return shaderModule;
@@ -630,7 +636,7 @@ void createGraphicsPipeline() {
       .pushConstantRangeCount = 0,
   };
 
-  err = vkCreatePipelineLayout(device, &pipelineLayoutInfo, NULL, &pipelineLayout);
+  err = vkCreatePipelineLayout(logicalDevice, &pipelineLayoutInfo, NULL, &pipelineLayout);
   handleError();
 
   VkGraphicsPipelineCreateInfo pipelineInfo = {
@@ -650,22 +656,118 @@ void createGraphicsPipeline() {
       .basePipelineHandle = VK_NULL_HANDLE,
   };
 
-  err = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL, &graphicsPipeline);
+  err = vkCreateGraphicsPipelines(logicalDevice, VK_NULL_HANDLE, 1, &pipelineInfo, NULL, &graphicsPipeline);
   handleError();
 
-  vkDestroyShaderModule(device, fragShaderModule, NULL);
-  vkDestroyShaderModule(device, vertShaderModule, NULL);
+  vkDestroyShaderModule(logicalDevice, fragShaderModule, NULL);
+  vkDestroyShaderModule(logicalDevice, vertShaderModule, NULL);
+}
+
+void createFramebuffers() {
+  swapChainFramebuffers = malloc(swapChainImagesCount * sizeof(VkFramebuffer));
+  for (size_t i = 0; i < swapChainImagesCount; i++) {
+    VkImageView attachments[] = {swapChainImageViews[i]};
+
+    VkFramebufferCreateInfo framebufferInfo = {
+        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        .renderPass = renderPass,
+        .attachmentCount = 1,
+        .pAttachments = attachments,
+        .width = swapChainExtent.width,
+        .height = swapChainExtent.height,
+        .layers = 1,
+    };
+
+    err = vkCreateFramebuffer(logicalDevice, &framebufferInfo, NULL, &swapChainFramebuffers[i]);
+    handleError();
+  }
+}
+
+void createCommandPool() {
+  VkCommandPoolCreateInfo poolInfo = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+      .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT | VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+      .queueFamilyIndex = firstGraphicsQueueFamilyIndex(),
+  };
+
+  err = vkCreateCommandPool(logicalDevice, &poolInfo, NULL, &commandPool);
+  handleError();
+}
+
+void createCommandBuffers() {
+  commandBuffers = malloc(MAX_FRAMES_IN_FLIGHT * sizeof(VkCommandBuffer));
+
+  VkCommandBufferAllocateInfo cmdBufferAllocInfo = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+      .commandPool = commandPool,
+      .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+      .commandBufferCount = (uint32_t)MAX_FRAMES_IN_FLIGHT,
+  };
+
+  err = vkAllocateCommandBuffers(logicalDevice, &cmdBufferAllocInfo, commandBuffers);
+  handleError();
+}
+
+void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+  VkCommandBufferBeginInfo beginInfo = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+  };
+
+  err = vkBeginCommandBuffer(commandBuffer, &beginInfo);
+  handleError();
+
+  VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+  VkRenderPassBeginInfo renderPassInfo = {
+      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+      .renderPass = renderPass,
+      .framebuffer = swapChainFramebuffers[imageIndex],
+      .renderArea.offset = {0, 0},
+      .renderArea.extent = swapChainExtent,
+      .clearValueCount = 1,
+      .pClearValues = &clearColor,
+  };
+
+  vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+  // viewport was defined to be dynamic before
+  VkViewport viewport = {
+      .x = 0.0f,
+      .y = 0.0f,
+      .width = swapChainExtent.width,
+      .height = swapChainExtent.height,
+      .minDepth = 0.0f,
+      .maxDepth = 1.0f,
+  };
+  vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+  // scissors were defined to be dynamic before
+  VkRect2D scissor = {
+      .offset = {0, 0},
+      .extent = swapChainExtent,
+  };
+  vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+  vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+  vkCmdEndRenderPass(commandBuffer);
+
+  err = vkEndCommandBuffer(commandBuffer);
+  handleError();
 }
 
 void cleanup() {
-  vkDestroyPipeline(device, graphicsPipeline, NULL);
-  vkDestroyPipelineLayout(device, pipelineLayout, NULL);
-  vkDestroyRenderPass(device, renderPass, NULL);
-  for (int i = 0; i < swapchainImagesCount; i++) {
-    vkDestroyImageView(device, swapchainImageViews[i], NULL);
+  vkDestroyCommandPool(logicalDevice, commandPool, NULL);
+  for (int i = 0; i < swapChainImagesCount; i++) {
+    vkDestroyFramebuffer(logicalDevice, swapChainFramebuffers[i], NULL);
   }
-  vkDestroySwapchainKHR(device, swapChain, NULL);
-  vkDestroyDevice(device, NULL);
+  vkDestroyPipeline(logicalDevice, graphicsPipeline, NULL);
+  vkDestroyPipelineLayout(logicalDevice, pipelineLayout, NULL);
+  vkDestroyRenderPass(logicalDevice, renderPass, NULL);
+  for (int i = 0; i < swapChainImagesCount; i++) {
+    vkDestroyImageView(logicalDevice, swapChainImageViews[i], NULL);
+  }
+  vkDestroySwapchainKHR(logicalDevice, swapChain, NULL);
+  vkDestroyDevice(logicalDevice, NULL);
   destroyDebugUtilsMessenger(instance, debugMessenger, NULL);
   vkDestroySurfaceKHR(instance, surface, NULL);
   vkDestroyInstance(instance, NULL);
@@ -685,4 +787,6 @@ void initVulkan() {
   createImageViews();
   createRenderPass();
   createGraphicsPipeline();
+  createFramebuffers();
+  createCommandPool();
 }
