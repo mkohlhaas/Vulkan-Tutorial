@@ -3,7 +3,14 @@ cmake_minimum_required(VERSION 3.27)
 project(vktutorial LANGUAGES C)
 
 find_package(Vulkan REQUIRED)
-find_package(glfw3 REQUIRED)
+find_package(glfw3  REQUIRED)
+
+# Glib2
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GLIB2 REQUIRED glib-2.0)
+include_directories(${GLIB2_INCLUDE_DIRS})
+link_directories(${GLIB2_LIBRARY_DIRS})
+link_libraries(${GLIB2_LIBRARIES})
 
 # GLAD
 # add_library(glad SHARED glad.c)
@@ -11,3 +18,13 @@ find_package(glfw3 REQUIRED)
 
 add_executable(${PROJECT_NAME} src/main.c src/vulkan.c src/window.c src/error.c)
 target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw)
+
+add_custom_command(
+  OUTPUT  vert.spv
+  OUTPUT  frag.spv
+  COMMAND Vulkan::glslc shader.vert -o "$<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders/vert.spv"
+  COMMAND Vulkan::glslc shader.frag -o "$<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders/frag.spv"
+  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/shaders"
+)
+
+add_custom_target(Compile_Shaders DEPENDS vert.spv frag.spv)
