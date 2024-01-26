@@ -8,9 +8,7 @@ const uint32_t HEIGHT = 600;
 GLFWwindow *window;
 
 // print error messages
-static void error_callback(int error, const char *description) {
-  fprintf(stderr, "Error: %s\nError Code: %d\n", description, error);
-}
+static void error_callback(int error, const char *description) { fprintf(stderr, "Error: %s\nError Code: %d\n", description, error); }
 
 // pressing ESC key closes window
 static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
@@ -44,5 +42,7 @@ void mainloop() {
   // loop until ESC key is pressed
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
+    drawFrame();
   }
+  deviceWaitIdle();
 }
