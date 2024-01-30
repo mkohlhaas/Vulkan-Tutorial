@@ -8,12 +8,13 @@ const uint32_t HEIGHT = 600;
 GLFWwindow *window;
 
 // print error messages
-static void error_callback(int error, const char *description) { fprintf(stderr, "Error: %s\nError Code: %d\n", description, error); }
+static void error_callback(int error, const char *description) { fprintf(stderr, "GLFW error: %s\nError Code: %d\n", description, error); }
 
 // pressing ESC key closes window
 static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
-  if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+  if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
     glfwSetWindowShouldClose(window, GLFW_TRUE);
+  }
 }
 
 void initWindow() {

@@ -4,6 +4,7 @@
 
 int err;
 
+// prints error message and exits application
 void handleError() {
   if (err) {
     switch (err) {
