@@ -59,7 +59,7 @@ typedef struct QueueFamilyIndices {
 } QueueFamilyIndices;
 
 VKAPI_PTR VkBool32 debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes,
-                                        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData) {
+                                 const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData) {
   fprintf(stderr, "Validation Layer: %s (%s)\n", pCallbackData->pMessage,
           messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT   ? "Severity: Verbose"
           : messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT    ? "Severity: Info"
@@ -69,8 +69,8 @@ VKAPI_PTR VkBool32 debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageS
   return VK_FALSE;
 }
 
-VkResult createDebugMessenger(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
-                                          const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger) {
+VkResult createDebugMessenger(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator,
+                              VkDebugUtilsMessengerEXT *pDebugMessenger) {
   PFN_vkCreateDebugUtilsMessengerEXT fn = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
   if (fn) {
     return fn(instance, pCreateInfo, pAllocator, pDebugMessenger);
@@ -232,18 +232,142 @@ void createSwapChain() {
   fprintf(stderr, "  Swap Chain Support:\n");
 
   // surface capabilities
+  // clang-format off
   fprintf(stderr, "    Surface Capabilities:\n");
   VkSurfaceCapabilitiesKHR surfaceCapabilities;
   err = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities);
   handleError();
-  fprintf(
-      stderr,
-      "      Min image count: %u\n      Max image count: %u (0 means ∞)\n      Max image array layers: %u\n      Current width: %u\n      Current "
-      "height: %u\n",
-      surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount, surfaceCapabilities.maxImageArrayLayers,
-      surfaceCapabilities.currentExtent.width, surfaceCapabilities.currentExtent.height);
-  fprintf(stderr, "      Max image width: %u\n      Max image height: %u\n", surfaceCapabilities.maxImageExtent.width,
-          surfaceCapabilities.maxImageExtent.height);
+
+  // basic cababilities
+  fprintf(stderr, "      Min image count: %u\n", surfaceCapabilities.minImageCount);
+  fprintf(stderr, "      Max image count: %u (0 means ∞)\n", surfaceCapabilities.maxImageCount);
+  fprintf(stderr, "      Current Extent:\n");
+  fprintf(stderr, "        width: %u\n", surfaceCapabilities.currentExtent.width);
+  fprintf(stderr, "        height: %u\n", surfaceCapabilities.currentExtent.height);
+  fprintf(stderr, "      Min Image Extent:\n");
+  fprintf(stderr, "        width: %u\n", surfaceCapabilities.minImageExtent.width);
+  fprintf(stderr, "        height: %u\n", surfaceCapabilities.minImageExtent.height);
+  fprintf(stderr, "      Max Image Extent:\n");
+  fprintf(stderr, "        width: %u\n", surfaceCapabilities.maxImageExtent.width);
+  fprintf(stderr, "        height: %u\n", surfaceCapabilities.maxImageExtent.height);
+  fprintf(stderr, "      Max image array layers: %u\n", surfaceCapabilities.maxImageArrayLayers);
+  fprintf(stderr, "      Supported Transforms:\n");
+  fprintf(stderr, "        identity: %s\n", surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR ? "true" : "false");
+  fprintf(stderr, "        rotate 90°: %s\n", surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_ROTATE_90_BIT_KHR ? "true" : "false");
+  fprintf(stderr, "        rotate 180°: %s\n", surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_ROTATE_180_BIT_KHR ? "true" : "false");
+  fprintf(stderr, "        rotate 270°: %s\n", surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_ROTATE_270_BIT_KHR ? "true" : "false");
+  fprintf(stderr, "        horizontal mirror: %s\n", surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_BIT_KHR ? "true" : "false");
+  fprintf(stderr, "        horizontal mirror 90°: %s\n", surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_90_BIT_KHR ? "true" : "false");
+  fprintf(stderr, "        horizontal mirror 180°: %s\n", surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_180_BIT_KHR ? "true" : "false");
+  fprintf(stderr, "        horizontal mirror 270°: %s\n", surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_270_BIT_KHR ? "true" : "false");
+  fprintf(stderr, "        inherit: %s\n", surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_INHERIT_BIT_KHR ? "true" : "false");
+  // clang-format on
+
+  // current transform
+  fprintf(stderr, "      Current Transform:\n");
+  if (surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) {
+    fprintf(stderr, "        identity\n");
+  } else if (surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_ROTATE_90_BIT_KHR) {
+    fprintf(stderr, "        rotate 90°\n");
+  } else if (surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_ROTATE_180_BIT_KHR) {
+    fprintf(stderr, "        rotate 180°\n");
+  } else if (surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_ROTATE_270_BIT_KHR) {
+    fprintf(stderr, "        rotate 270°\n");
+  } else if (surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_BIT_KHR) {
+    fprintf(stderr, "        horizontal mirror\n");
+  } else if (surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_90_BIT_KHR) {
+    fprintf(stderr, "        horizontal mirror 90°\n");
+  } else if (surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_180_BIT_KHR) {
+    fprintf(stderr, "        horizontal mirror 180°\n");
+  } else if (surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_270_BIT_KHR) {
+    fprintf(stderr, "        horizontal mirror 270°\n");
+  } else if (surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_INHERIT_BIT_KHR) {
+    fprintf(stderr, "        inherit\n");
+  }
+
+  // composite alpha
+  fprintf(stderr, "      Composite Alpha:\n");
+  if (surfaceCapabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR) {
+    fprintf(stderr, "        opaque\n");
+  }
+  if (surfaceCapabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR) {
+    fprintf(stderr, "        pre multiplied\n");
+  }
+  if (surfaceCapabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR) {
+    fprintf(stderr, "        post multiplied\n");
+  }
+  if (surfaceCapabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) {
+    fprintf(stderr, "        inherit\n");
+  }
+
+  // image usage
+  fprintf(stderr, "      Image Usage:\n");
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) {
+    fprintf(stderr, "        transfer src\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT) {
+    fprintf(stderr, "        transfer dst\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_SAMPLED_BIT) {
+    fprintf(stderr, "        sampled\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_STORAGE_BIT) {
+    fprintf(stderr, "        storage\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
+    fprintf(stderr, "        color attachment\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+    fprintf(stderr, "        depth stencil attachment\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) {
+    fprintf(stderr, "        transient attachment\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) {
+    fprintf(stderr, "        input attachment\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR) {
+    fprintf(stderr, "        video decode dst\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_VIDEO_DECODE_SRC_BIT_KHR) {
+    fprintf(stderr, "        video decode src\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR) {
+    fprintf(stderr, "        video decode dpb\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT) {
+    fprintf(stderr, "        fragment density map\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR) {
+    fprintf(stderr, "        fragment shading rate attachment\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT) {
+    fprintf(stderr, "        host transfer\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_VIDEO_ENCODE_DST_BIT_KHR) {
+    fprintf(stderr, "        video encode dst\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR) {
+    fprintf(stderr, "        video encode src\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR) {
+    fprintf(stderr, "        video encode dpb\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT) {
+    fprintf(stderr, "        attachment feedback loop\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_INVOCATION_MASK_BIT_HUAWEI) {
+    fprintf(stderr, "        invocation mask\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_SAMPLE_WEIGHT_BIT_QCOM) {
+    fprintf(stderr, "        sample weight\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_SAMPLE_BLOCK_MATCH_BIT_QCOM) {
+    fprintf(stderr, "        sample block match\n");
+  }
+  if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV) {
+    fprintf(stderr, "        shading rate image\n");
+  }
 
   // surface formats
   uint32_t formatCount;
@@ -260,21 +384,31 @@ void createSwapChain() {
     }
   }
 
-  // present modes
+  // presentation modes
   uint32_t presentModeCount;
   err = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, NULL);
   handleError();
   VkPresentModeKHR presentModes[presentModeCount];
   err = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentModes);
   handleError();
-  fprintf(stderr, "    Surface present modes: %u\n", presentModeCount);
-
+  fprintf(stderr, "    Surface presentation modes:\n");
   for (int i = 0; i < presentModeCount; i++) {
-    if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
-      fprintf(stderr, "      Mailbox present mode found.\n");
+    if (presentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR) {
+      fprintf(stderr, "      immediate\n");
+    } else if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
+      fprintf(stderr, "      mailbox\n");
+    } else if (presentModes[i] == VK_PRESENT_MODE_FIFO_KHR) {
+      fprintf(stderr, "      fifo\n");
+    } else if (presentModes[i] == VK_PRESENT_MODE_FIFO_RELAXED_KHR) {
+      fprintf(stderr, "      fifo relaxed\n");
+    } else if (presentModes[i] == VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR) {
+      fprintf(stderr, "      shared demand refresh\n");
+    } else if (presentModes[i] == VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR) {
+      fprintf(stderr, "      shared continuous refresh\n");
     }
   }
 
+  // For us it's sufficient to have an surface format and a presentation mode.
   if (formatCount == 0 && presentModeCount == 0) {
     err = VKT_ERROR_SWAP_CHAIN_NOT_ADEQUATE;
     handleError();
@@ -304,7 +438,7 @@ void createSwapChain() {
   err = vkCreateSwapchainKHR(device, &swapchainCreateInfo, NULL, &swapChain);
   handleError();
 
-  // swapchain images
+  // retrieve swapchain images
   err = vkGetSwapchainImagesKHR(device, swapChain, &swapChainImagesCount, NULL);
   handleError();
   swapChainImages = malloc(swapChainImagesCount * sizeof(VkImage));
@@ -488,7 +622,7 @@ bool isPhysicalDeviceSuitable(VkPhysicalDevice device) {
   fprintf(stderr, "    sparseResidencyAliased: %s\n", deviceFeatures.sparseResidencyAliased ? "true" : "false");
   fprintf(stderr, "    variableMultisampleRate: %s\n", deviceFeatures.variableMultisampleRate ? "true" : "false");
   fprintf(stderr, "    inheritedQueries: %s\n", deviceFeatures.inheritedQueries ? "true" : "false");
-  // clang-format off
+  // clang-format on
 
   // get device extensions
   uint32_t extensionCount;
@@ -527,7 +661,7 @@ bool isPhysicalDeviceSuitable(VkPhysicalDevice device) {
   return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU || deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
 }
 
-int firstGraphicsQueueFamilyIndex() {
+int fstGraphicsQueueFamilyIndex() {
   int result = -1;
   uint32_t queueFamilyCount;
   vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, NULL);
@@ -631,7 +765,7 @@ void pickPhysicalDevice() {
 }
 
 void createLogicalDevice() {
-  int queueFamilyIndex = firstGraphicsQueueFamilyIndex();
+  int queueFamilyIndex = fstGraphicsQueueFamilyIndex();
   float queuePriority = 1.0f;
   VkDeviceQueueCreateInfo deviceQueueCreateInfo = {
       .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -717,14 +851,14 @@ void createRenderPass() {
 }
 
 VkShaderModule createShaderModule(gchar *code, gsize codeSize) {
-  VkShaderModuleCreateInfo createInfo = {
+  VkShaderModuleCreateInfo shaderCreateInfo = {
       .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
       .codeSize = codeSize,
       .pCode = (const uint32_t *)code,
   };
 
   VkShaderModule shaderModule;
-  err = vkCreateShaderModule(device, &createInfo, NULL, &shaderModule);
+  err = vkCreateShaderModule(device, &shaderCreateInfo, NULL, &shaderModule);
   handleError();
 
   return shaderModule;
@@ -734,8 +868,8 @@ gboolean readFile(const char *filename, gchar **contents, gsize *length) { retur
 
 void createGraphicsPipeline() {
   gchar *vertShaderCode;
-  gsize lengthVertShaderCode;
   gchar *fragShaderCode;
+  gsize lengthVertShaderCode;
   gsize lengthFragShaderCode;
   readFile("shaders/vert.spv", &vertShaderCode, &lengthVertShaderCode);
   readFile("shaders/frag.spv", &fragShaderCode, &lengthFragShaderCode);
@@ -759,7 +893,7 @@ void createGraphicsPipeline() {
 
   VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
-  VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
+  VkPipelineVertexInputStateCreateInfo vertexInput = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
       .vertexBindingDescriptionCount = 0,
       .vertexAttributeDescriptionCount = 0,
@@ -811,8 +945,9 @@ void createGraphicsPipeline() {
       .blendConstants[3] = 0.0f,
   };
 
+  // search for vkCmdSet... function calls
   VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
-  VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = {
+  VkPipelineDynamicStateCreateInfo dynamicState = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
       .pDynamicStates = dynamicStates,
       .dynamicStateCount = sizeof(dynamicStates) / sizeof(VkDynamicState),
@@ -831,13 +966,13 @@ void createGraphicsPipeline() {
       .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
       .stageCount = 2,
       .pStages = shaderStages,
-      .pVertexInputState = &vertexInputInfo,
+      .pVertexInputState = &vertexInput,
       .pInputAssemblyState = &inputAssembly,
       .pViewportState = &viewportState,
       .pRasterizationState = &rasterizer,
       .pMultisampleState = &multisampling,
       .pColorBlendState = &colorBlending,
-      .pDynamicState = &dynamicStateCreateInfo,
+      .pDynamicState = &dynamicState,
       .layout = pipelineLayout,
       .renderPass = renderPass,
       .subpass = 0,
@@ -856,6 +991,7 @@ void createFramebuffers() {
   for (size_t i = 0; i < swapChainImagesCount; i++) {
     VkImageView attachments[] = {swapChainImageViews[i]};
 
+    // TODO: for documentation → renderPass is in the graphics pipeline and the framebuffers
     VkFramebufferCreateInfo framebufferInfo = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .renderPass = renderPass,
@@ -875,7 +1011,7 @@ void createCommandPool() {
   VkCommandPoolCreateInfo poolInfo = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
       .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT | VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-      .queueFamilyIndex = firstGraphicsQueueFamilyIndex(),
+      .queueFamilyIndex = fstGraphicsQueueFamilyIndex(),
   };
 
   err = vkCreateCommandPool(device, &poolInfo, NULL, &commandPool);
@@ -899,13 +1035,14 @@ void createCommandBuffers() {
 void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
   VkCommandBufferBeginInfo beginInfo = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+      .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
   };
 
   err = vkBeginCommandBuffer(commandBuffer, &beginInfo);
   handleError();
 
   VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-  VkRenderPassBeginInfo renderPassInfo = {
+  VkRenderPassBeginInfo renderPassBeginInfo = {
       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
       .renderPass = renderPass,
       .framebuffer = swapChainFramebuffers[imageIndex],
@@ -915,10 +1052,11 @@ void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
       .pClearValues = &clearColor,
   };
 
-  vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+  vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-  // viewport was defined to be dynamic before
+  // viewport was defined to be dynamic
+  // search for "VkDynamicState"
   VkViewport viewport = {
       .x = 0.0f,
       .y = 0.0f,
@@ -929,13 +1067,16 @@ void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
   };
   vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-  // scissors were defined to be dynamic before
+  // scissors were defined to be dynamic
+  // search for "VkDynamicState"
   VkRect2D scissor = {
       .offset = {0, 0},
       .extent = swapChainExtent,
   };
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
+  // uses topology of the pipeline
+  // search for topology 
   vkCmdDraw(commandBuffer, 3, 1, 0, 0);
   vkCmdEndRenderPass(commandBuffer);
 
@@ -968,15 +1109,18 @@ void createSyncObjects() {
 }
 
 void drawFrame() {
+  // wait for the previous frame to finish
   err = vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
   handleError();
   err = vkResetFences(device, 1, &inFlightFences[currentFrame]);
   handleError();
 
+  // acquire an image from the swap chain
   uint32_t imageIndex;
   err = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
   handleError();
 
+  // record command buffer which draws the scene onto acquired image
   err = vkResetCommandBuffer(commandBuffers[currentFrame], 0);
   handleError();
   recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
@@ -998,6 +1142,7 @@ void drawFrame() {
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores = signalSemaphores;
 
+  // submit recorded command buffer
   err = vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]);
   handleError();
 
@@ -1014,6 +1159,7 @@ void drawFrame() {
 
   presentInfo.pImageIndices = &imageIndex;
 
+  // present swap chain image
   vkQueuePresentKHR(graphicsQueue, &presentInfo);
 
   currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
