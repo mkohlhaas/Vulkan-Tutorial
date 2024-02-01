@@ -79,7 +79,7 @@ VkResult createDebugMessenger(VkInstance instance, const VkDebugUtilsMessengerCr
   }
 }
 
-void setupDebugMessenger() {
+void SetupDebugMessenger() {
   VkDebugUtilsMessengerCreateInfoEXT createInfo = {
       .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
       .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
@@ -128,7 +128,7 @@ const char **getRequiredExtensions(uint32_t *requiredExtensionsCount) {
   return requiredExtensions;
 }
 
-bool checkValidationLayerSupport() {
+bool CheckValidationLayerSupport() {
   // available validation layers
   uint32_t layerCount;
   err = vkEnumerateInstanceLayerProperties(&layerCount, NULL);
@@ -168,7 +168,7 @@ bool checkValidationLayerSupport() {
   return true;
 }
 
-void createInstance() {
+void CreateInstance() {
   VkApplicationInfo appInfo = {
       .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
       .pApplicationName = "Vulkan Tutorial",
@@ -198,7 +198,9 @@ void createInstance() {
   VkExtensionProperties extensions[extensionCount];
   err = vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, extensions);
 
+  // print instance information
   fprintf(stderr, "\nVulkan instance:\n");
+
   // print available extensions
   printf("  Available extensions:\n");
   for (int i = 0; i < extensionCount; i++) {
@@ -228,7 +230,7 @@ void createInstance() {
   free(requiredExtensions);
 }
 
-void createSwapChain() {
+void CreateSwapChain() {
   fprintf(stderr, "  Swap Chain Support:\n");
 
   // surface capabilities
@@ -446,189 +448,189 @@ void createSwapChain() {
   handleError();
 }
 
-bool isPhysicalDeviceSuitable(VkPhysicalDevice device) {
+bool isPhysicalDeviceSuitable(VkPhysicalDevice physicalDevice) {
   // get device properties and features
-  VkPhysicalDeviceProperties deviceProperties;
-  vkGetPhysicalDeviceProperties(device, &deviceProperties);
-  VkPhysicalDeviceFeatures deviceFeatures;
-  vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+  VkPhysicalDeviceProperties physicalDeviceProperties;
+  vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
+  VkPhysicalDeviceFeatures physicalDeviceFeatures;
+  vkGetPhysicalDeviceFeatures(physicalDevice, &physicalDeviceFeatures);
 
   // print physical device info
   // clang-format off
   fprintf(stderr, "\nPhysical Device:\n");
-  uint32_t  vId = deviceProperties.vendorID;
+  uint32_t  vId = physicalDeviceProperties.vendorID;
   fprintf(stderr, "  Vendor: %s\n",  vId == 0x1002 ? "AMD" : vId == 0x1010 ? "ImgTec" : vId == 0x10DE ? "Nvidia" : vId == 0x13B5 ? "ARM" : vId == 0x5143 ? "Qualcomm" : vId == 0x8086 ? "Intel" : "Unknown");
-  fprintf(stderr, "  Device Name: %s\n",  deviceProperties.deviceName);
+  fprintf(stderr, "  Device Name: %s\n",  physicalDeviceProperties.deviceName);
   fprintf(stderr, "  Limits:\n");
-  fprintf(stderr, "    maxImageDimension1D: %u\n", deviceProperties.limits.maxImageDimension1D);
-  fprintf(stderr, "    maxImageDimension2D: %u\n", deviceProperties.limits.maxImageDimension2D);
-  fprintf(stderr, "    maxImageDimension3D: %u\n", deviceProperties.limits.maxImageDimension3D);
-  fprintf(stderr, "    maxImageDimensionCube: %u\n", deviceProperties.limits.maxImageDimensionCube);
-  fprintf(stderr, "    maxImageArrayLayers: %u\n", deviceProperties.limits.maxImageArrayLayers);
-  fprintf(stderr, "    maxTexelBufferElements: %u\n", deviceProperties.limits.maxTexelBufferElements);
-  fprintf(stderr, "    maxUniformBufferRange: %u\n", deviceProperties.limits.maxUniformBufferRange);
-  fprintf(stderr, "    maxStorageBufferRange: %u\n", deviceProperties.limits.maxStorageBufferRange);
-  fprintf(stderr, "    maxPushConstantsSize: %u\n", deviceProperties.limits.maxPushConstantsSize);
-  fprintf(stderr, "    maxMemoryAllocationCount: %u\n", deviceProperties.limits.maxMemoryAllocationCount);
-  fprintf(stderr, "    maxSamplerAllocationCount: %u\n", deviceProperties.limits.maxSamplerAllocationCount);
-  fprintf(stderr, "    bufferImageGranularity: %lu\n", deviceProperties.limits.bufferImageGranularity);
-  fprintf(stderr, "    sparseAddressSpaceSize: %lu\n", deviceProperties.limits.sparseAddressSpaceSize);
-  fprintf(stderr, "    maxBoundDescriptorSets: %u\n", deviceProperties.limits.maxBoundDescriptorSets);
-  fprintf(stderr, "    maxPerStageDescriptorSamplers: %u\n", deviceProperties.limits.maxPerStageDescriptorSamplers);
-  fprintf(stderr, "    maxPerStageDescriptorUniformBuffers: %u\n", deviceProperties.limits.maxPerStageDescriptorUniformBuffers);
-  fprintf(stderr, "    maxPerStageDescriptorStorageBuffers: %u\n", deviceProperties.limits.maxPerStageDescriptorStorageBuffers);
-  fprintf(stderr, "    maxPerStageDescriptorSampledImages: %u\n", deviceProperties.limits.maxPerStageDescriptorSampledImages);
-  fprintf(stderr, "    maxPerStageDescriptorStorageImages: %u\n", deviceProperties.limits.maxPerStageDescriptorStorageImages);
-  fprintf(stderr, "    maxPerStageDescriptorInputAttachments: %u\n", deviceProperties.limits.maxPerStageDescriptorInputAttachments);
-  fprintf(stderr, "    maxPerStageResources: %u\n", deviceProperties.limits.maxPerStageResources);
-  fprintf(stderr, "    maxDescriptorSetSamplers: %u\n", deviceProperties.limits.maxDescriptorSetSamplers);
-  fprintf(stderr, "    maxDescriptorSetUniformBuffers: %u\n", deviceProperties.limits.maxDescriptorSetUniformBuffers);
-  fprintf(stderr, "    maxDescriptorSetUniformBuffersDynamic: %u\n", deviceProperties.limits.maxDescriptorSetUniformBuffersDynamic);
-  fprintf(stderr, "    maxDescriptorSetStorageBuffers: %u\n", deviceProperties.limits.maxDescriptorSetStorageBuffers);
-  fprintf(stderr, "    maxDescriptorSetStorageBuffersDynamic: %u\n", deviceProperties.limits.maxDescriptorSetStorageBuffersDynamic);
-  fprintf(stderr, "    maxDescriptorSetSampledImages: %u\n", deviceProperties.limits.maxDescriptorSetSampledImages);
-  fprintf(stderr, "    maxDescriptorSetStorageImages: %u\n", deviceProperties.limits.maxDescriptorSetStorageImages);
-  fprintf(stderr, "    maxDescriptorSetInputAttachments: %u\n", deviceProperties.limits.maxDescriptorSetInputAttachments);
-  fprintf(stderr, "    maxVertexInputAttributes: %u\n", deviceProperties.limits.maxVertexInputAttributes);
-  fprintf(stderr, "    maxVertexInputBindings: %u\n", deviceProperties.limits.maxVertexInputBindings);
-  fprintf(stderr, "    maxVertexInputAttributeOffset: %u\n", deviceProperties.limits.maxVertexInputAttributeOffset);
-  fprintf(stderr, "    maxVertexInputBindingStride: %u\n", deviceProperties.limits.maxVertexInputBindingStride);
-  fprintf(stderr, "    maxVertexOutputComponents: %u\n", deviceProperties.limits.maxVertexOutputComponents);
-  fprintf(stderr, "    maxTessellationGenerationLevel: %u\n", deviceProperties.limits.maxTessellationGenerationLevel);
-  fprintf(stderr, "    maxTessellationPatchSize: %u\n", deviceProperties.limits.maxTessellationPatchSize);
-  fprintf(stderr, "    maxTessellationControlPerVertexInputComponents: %u\n", deviceProperties.limits.maxTessellationControlPerVertexInputComponents);
-  fprintf(stderr, "    maxTessellationControlPerVertexOutputComponents: %u\n", deviceProperties.limits.maxTessellationControlPerVertexOutputComponents);
-  fprintf(stderr, "    maxTessellationControlPerPatchOutputComponents: %u\n", deviceProperties.limits.maxTessellationControlPerPatchOutputComponents);
-  fprintf(stderr, "    maxTessellationControlTotalOutputComponents: %u\n", deviceProperties.limits.maxTessellationControlTotalOutputComponents);
-  fprintf(stderr, "    maxTessellationEvaluationInputComponents: %u\n", deviceProperties.limits.maxTessellationEvaluationInputComponents);
-  fprintf(stderr, "    maxTessellationEvaluationOutputComponents: %u\n", deviceProperties.limits.maxTessellationEvaluationOutputComponents);
-  fprintf(stderr, "    maxGeometryShaderInvocations: %u\n", deviceProperties.limits.maxGeometryShaderInvocations);
-  fprintf(stderr, "    maxGeometryInputComponents: %u\n", deviceProperties.limits.maxGeometryInputComponents);
-  fprintf(stderr, "    maxGeometryOutputComponents: %u\n", deviceProperties.limits.maxGeometryOutputComponents);
-  fprintf(stderr, "    maxGeometryOutputVertices: %u\n", deviceProperties.limits.maxGeometryOutputVertices);
-  fprintf(stderr, "    maxGeometryTotalOutputComponents: %u\n", deviceProperties.limits.maxGeometryTotalOutputComponents);
-  fprintf(stderr, "    maxFragmentInputComponents: %u\n", deviceProperties.limits.maxFragmentInputComponents);
-  fprintf(stderr, "    maxFragmentOutputAttachments: %u\n", deviceProperties.limits.maxFragmentOutputAttachments);
-  fprintf(stderr, "    maxFragmentDualSrcAttachments: %u\n", deviceProperties.limits.maxFragmentDualSrcAttachments);
-  fprintf(stderr, "    maxFragmentCombinedOutputResources: %u\n", deviceProperties.limits.maxFragmentCombinedOutputResources);
-  fprintf(stderr, "    maxComputeSharedMemorySize: %u\n", deviceProperties.limits.maxComputeSharedMemorySize);
-  fprintf(stderr, "    maxComputeWorkGroupCount(: %u, %u, %u)\n", deviceProperties.limits.maxComputeWorkGroupCount[0], deviceProperties.limits.maxComputeWorkGroupCount[1], deviceProperties.limits.maxComputeWorkGroupCount[2]);
-  fprintf(stderr, "    maxComputeWorkGroupInvocationsmaxComputeWorkGroupInvocations: %u\n", deviceProperties.limits.maxComputeWorkGroupInvocations);
-  fprintf(stderr, "    maxComputeWorkGroupSize(: %u, %u, %u)\n", deviceProperties.limits.maxComputeWorkGroupSize[0], deviceProperties.limits.maxComputeWorkGroupSize[1], deviceProperties.limits.maxComputeWorkGroupSize[2]);
-  fprintf(stderr, "    subPixelPrecisionBits: %u\n", deviceProperties.limits.subPixelPrecisionBits);
-  fprintf(stderr, "    subTexelPrecisionBits: %u\n", deviceProperties.limits.subTexelPrecisionBits);
-  fprintf(stderr, "    mipmapPrecisionBits: %u\n", deviceProperties.limits.mipmapPrecisionBits);
-  fprintf(stderr, "    maxDrawIndexedIndexValue: %u\n", deviceProperties.limits.maxDrawIndexedIndexValue);
-  fprintf(stderr, "    maxDrawIndirectCount: %u\n", deviceProperties.limits.maxDrawIndirectCount);
-  fprintf(stderr, "    maxSamplerLodBias: %f\n", deviceProperties.limits.maxSamplerLodBias);
-  fprintf(stderr, "    maxSamplerAnisotropy: %f\n", deviceProperties.limits.maxSamplerAnisotropy);
-  fprintf(stderr, "    maxViewports: %u\n", deviceProperties.limits.maxViewports);
-  fprintf(stderr, "    maxViewportDimensions(: %u, %u)\n", deviceProperties.limits.maxViewportDimensions[0], deviceProperties.limits.maxViewportDimensions[1]);
-  fprintf(stderr, "    viewportBoundsRange(: %f, %f)\n", deviceProperties.limits.viewportBoundsRange[0], deviceProperties.limits.viewportBoundsRange[1]);
-  fprintf(stderr, "    viewportSubPixelBits: %u\n", deviceProperties.limits.viewportSubPixelBits);
-  fprintf(stderr, "    minMemoryMapAlignment: %zu\n", deviceProperties.limits.minMemoryMapAlignment);
-  fprintf(stderr, "    minTexelBufferOffsetAlignment: %lu\n", deviceProperties.limits.minTexelBufferOffsetAlignment);
-  fprintf(stderr, "    minUniformBufferOffsetAlignment: %lu\n", deviceProperties.limits.minUniformBufferOffsetAlignment);
-  fprintf(stderr, "    minStorageBufferOffsetAlignment: %lu\n", deviceProperties.limits.minStorageBufferOffsetAlignment);
-  fprintf(stderr, "    minTexelOffset: %d\n", deviceProperties.limits.minTexelOffset);
-  fprintf(stderr, "    maxTexelOffset: %u\n", deviceProperties.limits.maxTexelOffset);
-  fprintf(stderr, "    minTexelGatherOffset: %d\n", deviceProperties.limits.minTexelGatherOffset);
-  fprintf(stderr, "    maxTexelGatherOffset: %u\n", deviceProperties.limits.maxTexelGatherOffset);
-  fprintf(stderr, "    minInterpolationOffset: %f\n", deviceProperties.limits.minInterpolationOffset);
-  fprintf(stderr, "    maxInterpolationOffset: %f\n", deviceProperties.limits.maxInterpolationOffset);
-  fprintf(stderr, "    subPixelInterpolationOffsetBits: %u\n", deviceProperties.limits.subPixelInterpolationOffsetBits);
-  fprintf(stderr, "    maxFramebufferWidth: %u\n", deviceProperties.limits.maxFramebufferWidth);
-  fprintf(stderr, "    maxFramebufferHeight: %u\n", deviceProperties.limits.maxFramebufferHeight);
-  fprintf(stderr, "    maxFramebufferLayers: %u\n", deviceProperties.limits.maxFramebufferLayers);
-  fprintf(stderr, "    framebufferColorSampleCounts: %u\n", deviceProperties.limits.framebufferColorSampleCounts);
-  fprintf(stderr, "    framebufferDepthSampleCounts: %u\n", deviceProperties.limits.framebufferDepthSampleCounts);
-  fprintf(stderr, "    framebufferStencilSampleCounts: %u\n", deviceProperties.limits.framebufferStencilSampleCounts);
-  fprintf(stderr, "    framebufferNoAttachmentsSampleCounts: %u\n", deviceProperties.limits.framebufferNoAttachmentsSampleCounts);
-  fprintf(stderr, "    maxColorAttachments: %u\n", deviceProperties.limits.maxColorAttachments);
-  fprintf(stderr, "    sampledImageColorSampleCounts: %u\n", deviceProperties.limits.sampledImageColorSampleCounts);
-  fprintf(stderr, "    sampledImageIntegerSampleCounts: %u\n", deviceProperties.limits.sampledImageIntegerSampleCounts);
-  fprintf(stderr, "    sampledImageDepthSampleCounts: %u\n", deviceProperties.limits.sampledImageDepthSampleCounts);
-  fprintf(stderr, "    sampledImageStencilSampleCounts: %u\n", deviceProperties.limits.sampledImageStencilSampleCounts);
-  fprintf(stderr, "    storageImageSampleCounts: %u\n", deviceProperties.limits.storageImageSampleCounts);
-  fprintf(stderr, "    maxSampleMaskWords: %u\n", deviceProperties.limits.maxSampleMaskWords);
-  fprintf(stderr, "    timestampComputeAndGraphics: %s\n", deviceProperties.limits.timestampComputeAndGraphics ? "true" : "false");
-  fprintf(stderr, "    timestampPeriod: %f\n", deviceProperties.limits.timestampPeriod);
-  fprintf(stderr, "    maxClipDistances: %u\n", deviceProperties.limits.maxClipDistances);
-  fprintf(stderr, "    maxCullDistances: %u\n", deviceProperties.limits.maxCullDistances);
-  fprintf(stderr, "    maxCombinedClipAndCullDistances: %u\n", deviceProperties.limits.maxCombinedClipAndCullDistances);
-  fprintf(stderr, "    discreteQueuePriorities: %u\n", deviceProperties.limits.discreteQueuePriorities);
-  fprintf(stderr, "    pointSizeRange(: %f, %f)\n", deviceProperties.limits.pointSizeRange[0], deviceProperties.limits.pointSizeRange[1]);
-  fprintf(stderr, "    lineWidthRange(: %f, %f)\n", deviceProperties.limits.lineWidthRange[0], deviceProperties.limits.lineWidthRange[1]);
-  fprintf(stderr, "    pointSizeGranularity: %f\n", deviceProperties.limits.pointSizeGranularity);
-  fprintf(stderr, "    lineWidthGranularity: %f\n", deviceProperties.limits.lineWidthGranularity);
-  fprintf(stderr, "    strictLines: %s\n", deviceProperties.limits.strictLines? "true" : "false");
-  fprintf(stderr, "    standardSampleLocations: %s\n", deviceProperties.limits.standardSampleLocations? "true" : "false");
-  fprintf(stderr, "    optimalBufferCopyOffsetAlignment: %lu\n", deviceProperties.limits.optimalBufferCopyOffsetAlignment);
-  fprintf(stderr, "    optimalBufferCopyRowPitchAlignment: %lu\n", deviceProperties.limits.optimalBufferCopyRowPitchAlignment);
-  fprintf(stderr, "    nonCoherentAtomSize: %lu\n", deviceProperties.limits.nonCoherentAtomSize);
+  fprintf(stderr, "    maxImageDimension1D: %u\n", physicalDeviceProperties.limits.maxImageDimension1D);
+  fprintf(stderr, "    maxImageDimension2D: %u\n", physicalDeviceProperties.limits.maxImageDimension2D);
+  fprintf(stderr, "    maxImageDimension3D: %u\n", physicalDeviceProperties.limits.maxImageDimension3D);
+  fprintf(stderr, "    maxImageDimensionCube: %u\n", physicalDeviceProperties.limits.maxImageDimensionCube);
+  fprintf(stderr, "    maxImageArrayLayers: %u\n", physicalDeviceProperties.limits.maxImageArrayLayers);
+  fprintf(stderr, "    maxTexelBufferElements: %u\n", physicalDeviceProperties.limits.maxTexelBufferElements);
+  fprintf(stderr, "    maxUniformBufferRange: %u\n", physicalDeviceProperties.limits.maxUniformBufferRange);
+  fprintf(stderr, "    maxStorageBufferRange: %u\n", physicalDeviceProperties.limits.maxStorageBufferRange);
+  fprintf(stderr, "    maxPushConstantsSize: %u\n", physicalDeviceProperties.limits.maxPushConstantsSize);
+  fprintf(stderr, "    maxMemoryAllocationCount: %u\n", physicalDeviceProperties.limits.maxMemoryAllocationCount);
+  fprintf(stderr, "    maxSamplerAllocationCount: %u\n", physicalDeviceProperties.limits.maxSamplerAllocationCount);
+  fprintf(stderr, "    bufferImageGranularity: %lu\n", physicalDeviceProperties.limits.bufferImageGranularity);
+  fprintf(stderr, "    sparseAddressSpaceSize: %lu\n", physicalDeviceProperties.limits.sparseAddressSpaceSize);
+  fprintf(stderr, "    maxBoundDescriptorSets: %u\n", physicalDeviceProperties.limits.maxBoundDescriptorSets);
+  fprintf(stderr, "    maxPerStageDescriptorSamplers: %u\n", physicalDeviceProperties.limits.maxPerStageDescriptorSamplers);
+  fprintf(stderr, "    maxPerStageDescriptorUniformBuffers: %u\n", physicalDeviceProperties.limits.maxPerStageDescriptorUniformBuffers);
+  fprintf(stderr, "    maxPerStageDescriptorStorageBuffers: %u\n", physicalDeviceProperties.limits.maxPerStageDescriptorStorageBuffers);
+  fprintf(stderr, "    maxPerStageDescriptorSampledImages: %u\n", physicalDeviceProperties.limits.maxPerStageDescriptorSampledImages);
+  fprintf(stderr, "    maxPerStageDescriptorStorageImages: %u\n", physicalDeviceProperties.limits.maxPerStageDescriptorStorageImages);
+  fprintf(stderr, "    maxPerStageDescriptorInputAttachments: %u\n", physicalDeviceProperties.limits.maxPerStageDescriptorInputAttachments);
+  fprintf(stderr, "    maxPerStageResources: %u\n", physicalDeviceProperties.limits.maxPerStageResources);
+  fprintf(stderr, "    maxDescriptorSetSamplers: %u\n", physicalDeviceProperties.limits.maxDescriptorSetSamplers);
+  fprintf(stderr, "    maxDescriptorSetUniformBuffers: %u\n", physicalDeviceProperties.limits.maxDescriptorSetUniformBuffers);
+  fprintf(stderr, "    maxDescriptorSetUniformBuffersDynamic: %u\n", physicalDeviceProperties.limits.maxDescriptorSetUniformBuffersDynamic);
+  fprintf(stderr, "    maxDescriptorSetStorageBuffers: %u\n", physicalDeviceProperties.limits.maxDescriptorSetStorageBuffers);
+  fprintf(stderr, "    maxDescriptorSetStorageBuffersDynamic: %u\n", physicalDeviceProperties.limits.maxDescriptorSetStorageBuffersDynamic);
+  fprintf(stderr, "    maxDescriptorSetSampledImages: %u\n", physicalDeviceProperties.limits.maxDescriptorSetSampledImages);
+  fprintf(stderr, "    maxDescriptorSetStorageImages: %u\n", physicalDeviceProperties.limits.maxDescriptorSetStorageImages);
+  fprintf(stderr, "    maxDescriptorSetInputAttachments: %u\n", physicalDeviceProperties.limits.maxDescriptorSetInputAttachments);
+  fprintf(stderr, "    maxVertexInputAttributes: %u\n", physicalDeviceProperties.limits.maxVertexInputAttributes);
+  fprintf(stderr, "    maxVertexInputBindings: %u\n", physicalDeviceProperties.limits.maxVertexInputBindings);
+  fprintf(stderr, "    maxVertexInputAttributeOffset: %u\n", physicalDeviceProperties.limits.maxVertexInputAttributeOffset);
+  fprintf(stderr, "    maxVertexInputBindingStride: %u\n", physicalDeviceProperties.limits.maxVertexInputBindingStride);
+  fprintf(stderr, "    maxVertexOutputComponents: %u\n", physicalDeviceProperties.limits.maxVertexOutputComponents);
+  fprintf(stderr, "    maxTessellationGenerationLevel: %u\n", physicalDeviceProperties.limits.maxTessellationGenerationLevel);
+  fprintf(stderr, "    maxTessellationPatchSize: %u\n", physicalDeviceProperties.limits.maxTessellationPatchSize);
+  fprintf(stderr, "    maxTessellationControlPerVertexInputComponents: %u\n", physicalDeviceProperties.limits.maxTessellationControlPerVertexInputComponents);
+  fprintf(stderr, "    maxTessellationControlPerVertexOutputComponents: %u\n", physicalDeviceProperties.limits.maxTessellationControlPerVertexOutputComponents);
+  fprintf(stderr, "    maxTessellationControlPerPatchOutputComponents: %u\n", physicalDeviceProperties.limits.maxTessellationControlPerPatchOutputComponents);
+  fprintf(stderr, "    maxTessellationControlTotalOutputComponents: %u\n", physicalDeviceProperties.limits.maxTessellationControlTotalOutputComponents);
+  fprintf(stderr, "    maxTessellationEvaluationInputComponents: %u\n", physicalDeviceProperties.limits.maxTessellationEvaluationInputComponents);
+  fprintf(stderr, "    maxTessellationEvaluationOutputComponents: %u\n", physicalDeviceProperties.limits.maxTessellationEvaluationOutputComponents);
+  fprintf(stderr, "    maxGeometryShaderInvocations: %u\n", physicalDeviceProperties.limits.maxGeometryShaderInvocations);
+  fprintf(stderr, "    maxGeometryInputComponents: %u\n", physicalDeviceProperties.limits.maxGeometryInputComponents);
+  fprintf(stderr, "    maxGeometryOutputComponents: %u\n", physicalDeviceProperties.limits.maxGeometryOutputComponents);
+  fprintf(stderr, "    maxGeometryOutputVertices: %u\n", physicalDeviceProperties.limits.maxGeometryOutputVertices);
+  fprintf(stderr, "    maxGeometryTotalOutputComponents: %u\n", physicalDeviceProperties.limits.maxGeometryTotalOutputComponents);
+  fprintf(stderr, "    maxFragmentInputComponents: %u\n", physicalDeviceProperties.limits.maxFragmentInputComponents);
+  fprintf(stderr, "    maxFragmentOutputAttachments: %u\n", physicalDeviceProperties.limits.maxFragmentOutputAttachments);
+  fprintf(stderr, "    maxFragmentDualSrcAttachments: %u\n", physicalDeviceProperties.limits.maxFragmentDualSrcAttachments);
+  fprintf(stderr, "    maxFragmentCombinedOutputResources: %u\n", physicalDeviceProperties.limits.maxFragmentCombinedOutputResources);
+  fprintf(stderr, "    maxComputeSharedMemorySize: %u\n", physicalDeviceProperties.limits.maxComputeSharedMemorySize);
+  fprintf(stderr, "    maxComputeWorkGroupCount(: %u, %u, %u)\n", physicalDeviceProperties.limits.maxComputeWorkGroupCount[0], physicalDeviceProperties.limits.maxComputeWorkGroupCount[1], physicalDeviceProperties.limits.maxComputeWorkGroupCount[2]);
+  fprintf(stderr, "    maxComputeWorkGroupInvocationsmaxComputeWorkGroupInvocations: %u\n", physicalDeviceProperties.limits.maxComputeWorkGroupInvocations);
+  fprintf(stderr, "    maxComputeWorkGroupSize(: %u, %u, %u)\n", physicalDeviceProperties.limits.maxComputeWorkGroupSize[0], physicalDeviceProperties.limits.maxComputeWorkGroupSize[1], physicalDeviceProperties.limits.maxComputeWorkGroupSize[2]);
+  fprintf(stderr, "    subPixelPrecisionBits: %u\n", physicalDeviceProperties.limits.subPixelPrecisionBits);
+  fprintf(stderr, "    subTexelPrecisionBits: %u\n", physicalDeviceProperties.limits.subTexelPrecisionBits);
+  fprintf(stderr, "    mipmapPrecisionBits: %u\n", physicalDeviceProperties.limits.mipmapPrecisionBits);
+  fprintf(stderr, "    maxDrawIndexedIndexValue: %u\n", physicalDeviceProperties.limits.maxDrawIndexedIndexValue);
+  fprintf(stderr, "    maxDrawIndirectCount: %u\n", physicalDeviceProperties.limits.maxDrawIndirectCount);
+  fprintf(stderr, "    maxSamplerLodBias: %f\n", physicalDeviceProperties.limits.maxSamplerLodBias);
+  fprintf(stderr, "    maxSamplerAnisotropy: %f\n", physicalDeviceProperties.limits.maxSamplerAnisotropy);
+  fprintf(stderr, "    maxViewports: %u\n", physicalDeviceProperties.limits.maxViewports);
+  fprintf(stderr, "    maxViewportDimensions(: %u, %u)\n", physicalDeviceProperties.limits.maxViewportDimensions[0], physicalDeviceProperties.limits.maxViewportDimensions[1]);
+  fprintf(stderr, "    viewportBoundsRange(: %f, %f)\n", physicalDeviceProperties.limits.viewportBoundsRange[0], physicalDeviceProperties.limits.viewportBoundsRange[1]);
+  fprintf(stderr, "    viewportSubPixelBits: %u\n", physicalDeviceProperties.limits.viewportSubPixelBits);
+  fprintf(stderr, "    minMemoryMapAlignment: %zu\n", physicalDeviceProperties.limits.minMemoryMapAlignment);
+  fprintf(stderr, "    minTexelBufferOffsetAlignment: %lu\n", physicalDeviceProperties.limits.minTexelBufferOffsetAlignment);
+  fprintf(stderr, "    minUniformBufferOffsetAlignment: %lu\n", physicalDeviceProperties.limits.minUniformBufferOffsetAlignment);
+  fprintf(stderr, "    minStorageBufferOffsetAlignment: %lu\n", physicalDeviceProperties.limits.minStorageBufferOffsetAlignment);
+  fprintf(stderr, "    minTexelOffset: %d\n", physicalDeviceProperties.limits.minTexelOffset);
+  fprintf(stderr, "    maxTexelOffset: %u\n", physicalDeviceProperties.limits.maxTexelOffset);
+  fprintf(stderr, "    minTexelGatherOffset: %d\n", physicalDeviceProperties.limits.minTexelGatherOffset);
+  fprintf(stderr, "    maxTexelGatherOffset: %u\n", physicalDeviceProperties.limits.maxTexelGatherOffset);
+  fprintf(stderr, "    minInterpolationOffset: %f\n", physicalDeviceProperties.limits.minInterpolationOffset);
+  fprintf(stderr, "    maxInterpolationOffset: %f\n", physicalDeviceProperties.limits.maxInterpolationOffset);
+  fprintf(stderr, "    subPixelInterpolationOffsetBits: %u\n", physicalDeviceProperties.limits.subPixelInterpolationOffsetBits);
+  fprintf(stderr, "    maxFramebufferWidth: %u\n", physicalDeviceProperties.limits.maxFramebufferWidth);
+  fprintf(stderr, "    maxFramebufferHeight: %u\n", physicalDeviceProperties.limits.maxFramebufferHeight);
+  fprintf(stderr, "    maxFramebufferLayers: %u\n", physicalDeviceProperties.limits.maxFramebufferLayers);
+  fprintf(stderr, "    framebufferColorSampleCounts: %u\n", physicalDeviceProperties.limits.framebufferColorSampleCounts);
+  fprintf(stderr, "    framebufferDepthSampleCounts: %u\n", physicalDeviceProperties.limits.framebufferDepthSampleCounts);
+  fprintf(stderr, "    framebufferStencilSampleCounts: %u\n", physicalDeviceProperties.limits.framebufferStencilSampleCounts);
+  fprintf(stderr, "    framebufferNoAttachmentsSampleCounts: %u\n", physicalDeviceProperties.limits.framebufferNoAttachmentsSampleCounts);
+  fprintf(stderr, "    maxColorAttachments: %u\n", physicalDeviceProperties.limits.maxColorAttachments);
+  fprintf(stderr, "    sampledImageColorSampleCounts: %u\n", physicalDeviceProperties.limits.sampledImageColorSampleCounts);
+  fprintf(stderr, "    sampledImageIntegerSampleCounts: %u\n", physicalDeviceProperties.limits.sampledImageIntegerSampleCounts);
+  fprintf(stderr, "    sampledImageDepthSampleCounts: %u\n", physicalDeviceProperties.limits.sampledImageDepthSampleCounts);
+  fprintf(stderr, "    sampledImageStencilSampleCounts: %u\n", physicalDeviceProperties.limits.sampledImageStencilSampleCounts);
+  fprintf(stderr, "    storageImageSampleCounts: %u\n", physicalDeviceProperties.limits.storageImageSampleCounts);
+  fprintf(stderr, "    maxSampleMaskWords: %u\n", physicalDeviceProperties.limits.maxSampleMaskWords);
+  fprintf(stderr, "    timestampComputeAndGraphics: %s\n", physicalDeviceProperties.limits.timestampComputeAndGraphics ? "true" : "false");
+  fprintf(stderr, "    timestampPeriod: %f\n", physicalDeviceProperties.limits.timestampPeriod);
+  fprintf(stderr, "    maxClipDistances: %u\n", physicalDeviceProperties.limits.maxClipDistances);
+  fprintf(stderr, "    maxCullDistances: %u\n", physicalDeviceProperties.limits.maxCullDistances);
+  fprintf(stderr, "    maxCombinedClipAndCullDistances: %u\n", physicalDeviceProperties.limits.maxCombinedClipAndCullDistances);
+  fprintf(stderr, "    discreteQueuePriorities: %u\n", physicalDeviceProperties.limits.discreteQueuePriorities);
+  fprintf(stderr, "    pointSizeRange(: %f, %f)\n", physicalDeviceProperties.limits.pointSizeRange[0], physicalDeviceProperties.limits.pointSizeRange[1]);
+  fprintf(stderr, "    lineWidthRange(: %f, %f)\n", physicalDeviceProperties.limits.lineWidthRange[0], physicalDeviceProperties.limits.lineWidthRange[1]);
+  fprintf(stderr, "    pointSizeGranularity: %f\n", physicalDeviceProperties.limits.pointSizeGranularity);
+  fprintf(stderr, "    lineWidthGranularity: %f\n", physicalDeviceProperties.limits.lineWidthGranularity);
+  fprintf(stderr, "    strictLines: %s\n", physicalDeviceProperties.limits.strictLines? "true" : "false");
+  fprintf(stderr, "    standardSampleLocations: %s\n", physicalDeviceProperties.limits.standardSampleLocations? "true" : "false");
+  fprintf(stderr, "    optimalBufferCopyOffsetAlignment: %lu\n", physicalDeviceProperties.limits.optimalBufferCopyOffsetAlignment);
+  fprintf(stderr, "    optimalBufferCopyRowPitchAlignment: %lu\n", physicalDeviceProperties.limits.optimalBufferCopyRowPitchAlignment);
+  fprintf(stderr, "    nonCoherentAtomSize: %lu\n", physicalDeviceProperties.limits.nonCoherentAtomSize);
   fprintf(stderr, "  Features:\n");
-  fprintf(stderr, "    robustBufferAccess: %s\n", deviceFeatures.robustBufferAccess ? "true" : "false");
-  fprintf(stderr, "    fullDrawIndexUint32: %s\n", deviceFeatures.fullDrawIndexUint32 ? "true" : "false");
-  fprintf(stderr, "    imageCubeArray: %s\n", deviceFeatures.imageCubeArray ? "true" : "false");
-  fprintf(stderr, "    independentBlend: %s\n", deviceFeatures.independentBlend ? "true" : "false");
-  fprintf(stderr, "    geometryShader: %s\n", deviceFeatures.geometryShader ? "true" : "false");
-  fprintf(stderr, "    tessellationShader: %s\n", deviceFeatures.tessellationShader ? "true" : "false");
-  fprintf(stderr, "    sampleRateShading: %s\n", deviceFeatures.sampleRateShading ? "true" : "false");
-  fprintf(stderr, "    dualSrcBlend: %s\n", deviceFeatures.dualSrcBlend ? "true" : "false");
-  fprintf(stderr, "    logicOp: %s\n", deviceFeatures.logicOp ? "true" : "false");
-  fprintf(stderr, "    multiDrawIndirect: %s\n", deviceFeatures.multiDrawIndirect ? "true" : "false");
-  fprintf(stderr, "    drawIndirectFirstInstance: %s\n", deviceFeatures.drawIndirectFirstInstance ? "true" : "false");
-  fprintf(stderr, "    depthClamp: %s\n", deviceFeatures.depthClamp ? "true" : "false");
-  fprintf(stderr, "    depthBiasClamp: %s\n", deviceFeatures.depthBiasClamp ? "true" : "false");
-  fprintf(stderr, "    fillModeNonSolid: %s\n", deviceFeatures.fillModeNonSolid ? "true" : "false");
-  fprintf(stderr, "    depthBounds: %s\n", deviceFeatures.depthBounds ? "true" : "false");
-  fprintf(stderr, "    wideLines: %s\n", deviceFeatures.wideLines ? "true" : "false");
-  fprintf(stderr, "    largePoints: %s\n", deviceFeatures.largePoints ? "true" : "false");
-  fprintf(stderr, "    alphaToOne: %s\n", deviceFeatures.alphaToOne ? "true" : "false");
-  fprintf(stderr, "    multiViewport: %s\n", deviceFeatures.multiViewport ? "true" : "false");
-  fprintf(stderr, "    samplerAnisotropy: %s\n", deviceFeatures.samplerAnisotropy ? "true" : "false");
-  fprintf(stderr, "    textureCompressionETC2: %s\n", deviceFeatures.textureCompressionETC2 ? "true" : "false");
-  fprintf(stderr, "    textureCompressionASTC_LDR: %s\n", deviceFeatures.textureCompressionASTC_LDR ? "true" : "false");
-  fprintf(stderr, "    textureCompressionBC: %s\n", deviceFeatures.textureCompressionBC ? "true" : "false");
-  fprintf(stderr, "    occlusionQueryPrecise: %s\n", deviceFeatures.occlusionQueryPrecise ? "true" : "false");
-  fprintf(stderr, "    pipelineStatisticsQuery: %s\n", deviceFeatures.pipelineStatisticsQuery ? "true" : "false");
-  fprintf(stderr, "    vertexPipelineStoresAndAtomics: %s\n", deviceFeatures.vertexPipelineStoresAndAtomics ? "true" : "false");
-  fprintf(stderr, "    fragmentStoresAndAtomics: %s\n", deviceFeatures.fragmentStoresAndAtomics ? "true" : "false");
-  fprintf(stderr, "    shaderTessellationAndGeometryPointSize: %s\n", deviceFeatures.shaderTessellationAndGeometryPointSize ? "true" : "false");
-  fprintf(stderr, "    shaderImageGatherExtended: %s\n", deviceFeatures.shaderImageGatherExtended ? "true" : "false");
-  fprintf(stderr, "    shaderStorageImageExtendedFormats: %s\n", deviceFeatures.shaderStorageImageExtendedFormats ? "true" : "false");
-  fprintf(stderr, "    shaderStorageImageMultisample: %s\n", deviceFeatures.shaderStorageImageMultisample ? "true" : "false");
-  fprintf(stderr, "    shaderStorageImageReadWithoutFormat: %s\n", deviceFeatures.shaderStorageImageReadWithoutFormat ? "true" : "false");
-  fprintf(stderr, "    shaderStorageImageWriteWithoutFormat: %s\n", deviceFeatures.shaderStorageImageWriteWithoutFormat ? "true" : "false");
-  fprintf(stderr, "    shaderUniformBufferArrayDynamicIndexing: %s\n", deviceFeatures.shaderUniformBufferArrayDynamicIndexing ? "true" : "false");
-  fprintf(stderr, "    shaderSampledImageArrayDynamicIndexing: %s\n", deviceFeatures.shaderSampledImageArrayDynamicIndexing ? "true" : "false");
-  fprintf(stderr, "    shaderStorageBufferArrayDynamicIndexing: %s\n", deviceFeatures.shaderStorageBufferArrayDynamicIndexing ? "true" : "false");
-  fprintf(stderr, "    shaderStorageImageArrayDynamicIndexing: %s\n", deviceFeatures.shaderStorageImageArrayDynamicIndexing ? "true" : "false");
-  fprintf(stderr, "    shaderClipDistance: %s\n", deviceFeatures.shaderClipDistance ? "true" : "false");
-  fprintf(stderr, "    shaderCullDistance: %s\n", deviceFeatures.shaderCullDistance ? "true" : "false");
-  fprintf(stderr, "    shaderFloat64: %s\n", deviceFeatures.shaderFloat64 ? "true" : "false");
-  fprintf(stderr, "    shaderInt64: %s\n", deviceFeatures.shaderInt64 ? "true" : "false");
-  fprintf(stderr, "    shaderInt16: %s\n", deviceFeatures.shaderInt16 ? "true" : "false");
-  fprintf(stderr, "    shaderResourceResidency: %s\n", deviceFeatures.shaderResourceResidency ? "true" : "false");
-  fprintf(stderr, "    shaderResourceMinLod: %s\n", deviceFeatures.shaderResourceMinLod ? "true" : "false");
-  fprintf(stderr, "    sparseBinding: %s\n", deviceFeatures.sparseBinding ? "true" : "false");
-  fprintf(stderr, "    sparseResidencyBuffer: %s\n", deviceFeatures.sparseResidencyBuffer ? "true" : "false");
-  fprintf(stderr, "    sparseResidencyImage2D: %s\n", deviceFeatures.sparseResidencyImage2D ? "true" : "false");
-  fprintf(stderr, "    sparseResidencyImage3D: %s\n", deviceFeatures.sparseResidencyImage3D ? "true" : "false");
-  fprintf(stderr, "    sparseResidency2Samples: %s\n", deviceFeatures.sparseResidency2Samples ? "true" : "false");
-  fprintf(stderr, "    sparseResidency4Samples: %s\n", deviceFeatures.sparseResidency4Samples ? "true" : "false");
-  fprintf(stderr, "    sparseResidency8Samples: %s\n", deviceFeatures.sparseResidency8Samples ? "true" : "false");
-  fprintf(stderr, "    sparseResidency16Samples: %s\n", deviceFeatures.sparseResidency16Samples ? "true" : "false");
-  fprintf(stderr, "    sparseResidencyAliased: %s\n", deviceFeatures.sparseResidencyAliased ? "true" : "false");
-  fprintf(stderr, "    variableMultisampleRate: %s\n", deviceFeatures.variableMultisampleRate ? "true" : "false");
-  fprintf(stderr, "    inheritedQueries: %s\n", deviceFeatures.inheritedQueries ? "true" : "false");
+  fprintf(stderr, "    robustBufferAccess: %s\n", physicalDeviceFeatures.robustBufferAccess ? "true" : "false");
+  fprintf(stderr, "    fullDrawIndexUint32: %s\n", physicalDeviceFeatures.fullDrawIndexUint32 ? "true" : "false");
+  fprintf(stderr, "    imageCubeArray: %s\n", physicalDeviceFeatures.imageCubeArray ? "true" : "false");
+  fprintf(stderr, "    independentBlend: %s\n", physicalDeviceFeatures.independentBlend ? "true" : "false");
+  fprintf(stderr, "    geometryShader: %s\n", physicalDeviceFeatures.geometryShader ? "true" : "false");
+  fprintf(stderr, "    tessellationShader: %s\n", physicalDeviceFeatures.tessellationShader ? "true" : "false");
+  fprintf(stderr, "    sampleRateShading: %s\n", physicalDeviceFeatures.sampleRateShading ? "true" : "false");
+  fprintf(stderr, "    dualSrcBlend: %s\n", physicalDeviceFeatures.dualSrcBlend ? "true" : "false");
+  fprintf(stderr, "    logicOp: %s\n", physicalDeviceFeatures.logicOp ? "true" : "false");
+  fprintf(stderr, "    multiDrawIndirect: %s\n", physicalDeviceFeatures.multiDrawIndirect ? "true" : "false");
+  fprintf(stderr, "    drawIndirectFirstInstance: %s\n", physicalDeviceFeatures.drawIndirectFirstInstance ? "true" : "false");
+  fprintf(stderr, "    depthClamp: %s\n", physicalDeviceFeatures.depthClamp ? "true" : "false");
+  fprintf(stderr, "    depthBiasClamp: %s\n", physicalDeviceFeatures.depthBiasClamp ? "true" : "false");
+  fprintf(stderr, "    fillModeNonSolid: %s\n", physicalDeviceFeatures.fillModeNonSolid ? "true" : "false");
+  fprintf(stderr, "    depthBounds: %s\n", physicalDeviceFeatures.depthBounds ? "true" : "false");
+  fprintf(stderr, "    wideLines: %s\n", physicalDeviceFeatures.wideLines ? "true" : "false");
+  fprintf(stderr, "    largePoints: %s\n", physicalDeviceFeatures.largePoints ? "true" : "false");
+  fprintf(stderr, "    alphaToOne: %s\n", physicalDeviceFeatures.alphaToOne ? "true" : "false");
+  fprintf(stderr, "    multiViewport: %s\n", physicalDeviceFeatures.multiViewport ? "true" : "false");
+  fprintf(stderr, "    samplerAnisotropy: %s\n", physicalDeviceFeatures.samplerAnisotropy ? "true" : "false");
+  fprintf(stderr, "    textureCompressionETC2: %s\n", physicalDeviceFeatures.textureCompressionETC2 ? "true" : "false");
+  fprintf(stderr, "    textureCompressionASTC_LDR: %s\n", physicalDeviceFeatures.textureCompressionASTC_LDR ? "true" : "false");
+  fprintf(stderr, "    textureCompressionBC: %s\n", physicalDeviceFeatures.textureCompressionBC ? "true" : "false");
+  fprintf(stderr, "    occlusionQueryPrecise: %s\n", physicalDeviceFeatures.occlusionQueryPrecise ? "true" : "false");
+  fprintf(stderr, "    pipelineStatisticsQuery: %s\n", physicalDeviceFeatures.pipelineStatisticsQuery ? "true" : "false");
+  fprintf(stderr, "    vertexPipelineStoresAndAtomics: %s\n", physicalDeviceFeatures.vertexPipelineStoresAndAtomics ? "true" : "false");
+  fprintf(stderr, "    fragmentStoresAndAtomics: %s\n", physicalDeviceFeatures.fragmentStoresAndAtomics ? "true" : "false");
+  fprintf(stderr, "    shaderTessellationAndGeometryPointSize: %s\n", physicalDeviceFeatures.shaderTessellationAndGeometryPointSize ? "true" : "false");
+  fprintf(stderr, "    shaderImageGatherExtended: %s\n", physicalDeviceFeatures.shaderImageGatherExtended ? "true" : "false");
+  fprintf(stderr, "    shaderStorageImageExtendedFormats: %s\n", physicalDeviceFeatures.shaderStorageImageExtendedFormats ? "true" : "false");
+  fprintf(stderr, "    shaderStorageImageMultisample: %s\n", physicalDeviceFeatures.shaderStorageImageMultisample ? "true" : "false");
+  fprintf(stderr, "    shaderStorageImageReadWithoutFormat: %s\n", physicalDeviceFeatures.shaderStorageImageReadWithoutFormat ? "true" : "false");
+  fprintf(stderr, "    shaderStorageImageWriteWithoutFormat: %s\n", physicalDeviceFeatures.shaderStorageImageWriteWithoutFormat ? "true" : "false");
+  fprintf(stderr, "    shaderUniformBufferArrayDynamicIndexing: %s\n", physicalDeviceFeatures.shaderUniformBufferArrayDynamicIndexing ? "true" : "false");
+  fprintf(stderr, "    shaderSampledImageArrayDynamicIndexing: %s\n", physicalDeviceFeatures.shaderSampledImageArrayDynamicIndexing ? "true" : "false");
+  fprintf(stderr, "    shaderStorageBufferArrayDynamicIndexing: %s\n", physicalDeviceFeatures.shaderStorageBufferArrayDynamicIndexing ? "true" : "false");
+  fprintf(stderr, "    shaderStorageImageArrayDynamicIndexing: %s\n", physicalDeviceFeatures.shaderStorageImageArrayDynamicIndexing ? "true" : "false");
+  fprintf(stderr, "    shaderClipDistance: %s\n", physicalDeviceFeatures.shaderClipDistance ? "true" : "false");
+  fprintf(stderr, "    shaderCullDistance: %s\n", physicalDeviceFeatures.shaderCullDistance ? "true" : "false");
+  fprintf(stderr, "    shaderFloat64: %s\n", physicalDeviceFeatures.shaderFloat64 ? "true" : "false");
+  fprintf(stderr, "    shaderInt64: %s\n", physicalDeviceFeatures.shaderInt64 ? "true" : "false");
+  fprintf(stderr, "    shaderInt16: %s\n", physicalDeviceFeatures.shaderInt16 ? "true" : "false");
+  fprintf(stderr, "    shaderResourceResidency: %s\n", physicalDeviceFeatures.shaderResourceResidency ? "true" : "false");
+  fprintf(stderr, "    shaderResourceMinLod: %s\n", physicalDeviceFeatures.shaderResourceMinLod ? "true" : "false");
+  fprintf(stderr, "    sparseBinding: %s\n", physicalDeviceFeatures.sparseBinding ? "true" : "false");
+  fprintf(stderr, "    sparseResidencyBuffer: %s\n", physicalDeviceFeatures.sparseResidencyBuffer ? "true" : "false");
+  fprintf(stderr, "    sparseResidencyImage2D: %s\n", physicalDeviceFeatures.sparseResidencyImage2D ? "true" : "false");
+  fprintf(stderr, "    sparseResidencyImage3D: %s\n", physicalDeviceFeatures.sparseResidencyImage3D ? "true" : "false");
+  fprintf(stderr, "    sparseResidency2Samples: %s\n", physicalDeviceFeatures.sparseResidency2Samples ? "true" : "false");
+  fprintf(stderr, "    sparseResidency4Samples: %s\n", physicalDeviceFeatures.sparseResidency4Samples ? "true" : "false");
+  fprintf(stderr, "    sparseResidency8Samples: %s\n", physicalDeviceFeatures.sparseResidency8Samples ? "true" : "false");
+  fprintf(stderr, "    sparseResidency16Samples: %s\n", physicalDeviceFeatures.sparseResidency16Samples ? "true" : "false");
+  fprintf(stderr, "    sparseResidencyAliased: %s\n", physicalDeviceFeatures.sparseResidencyAliased ? "true" : "false");
+  fprintf(stderr, "    variableMultisampleRate: %s\n", physicalDeviceFeatures.variableMultisampleRate ? "true" : "false");
+  fprintf(stderr, "    inheritedQueries: %s\n", physicalDeviceFeatures.inheritedQueries ? "true" : "false");
   // clang-format on
 
   // get device extensions
   uint32_t extensionCount;
-  vkEnumerateDeviceExtensionProperties(device, NULL, &extensionCount, NULL);
+  vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount, NULL);
   VkExtensionProperties availableDeviceExtensions[extensionCount];
-  vkEnumerateDeviceExtensionProperties(device, NULL, &extensionCount, availableDeviceExtensions);
+  vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount, availableDeviceExtensions);
 
   // print available device extensions
   fprintf(stderr, "  Available extensions:\n");
@@ -658,7 +660,8 @@ bool isPhysicalDeviceSuitable(VkPhysicalDevice device) {
   printf("  All required device extensions are available: true\n");
 
   // This is the criteria for being a suitable physical device: being a GPU!
-  return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU || deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
+  return physicalDeviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ||
+         physicalDeviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
 }
 
 int fstGraphicsQueueFamilyIndex() {
@@ -689,10 +692,8 @@ int fstGraphicsQueueFamilyIndex() {
   return result;
 }
 
-QueueFamilyIndices printQueueFamilies() {
-  QueueFamilyIndices indices;
-
-  uint32_t queueFamilyCount = 0;
+void PrintQueueFamilies() {
+  uint32_t queueFamilyCount;
   vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, NULL);
 
   VkQueueFamilyProperties queueFamilies[queueFamilyCount];
@@ -730,11 +731,9 @@ QueueFamilyIndices printQueueFamilies() {
     }
     fprintf(stderr, "\n");
   }
-
-  return indices;
 }
 
-void pickPhysicalDevice() {
+void PickPhysicalDevice() {
   // get count of phsysical devices
   uint32_t physicalDeviceCount;
   vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, NULL);
@@ -764,7 +763,7 @@ void pickPhysicalDevice() {
   }
 }
 
-void createLogicalDevice() {
+void CreateLogicalDevice() {
   int queueFamilyIndex = fstGraphicsQueueFamilyIndex();
   float queuePriority = 1.0f;
   VkDeviceQueueCreateInfo deviceQueueCreateInfo = {
@@ -787,12 +786,12 @@ void createLogicalDevice() {
   vkGetDeviceQueue(device, queueFamilyIndex, 0, &graphicsQueue);
 }
 
-void createSurface() {
+void CreateSurface() {
   err = glfwCreateWindowSurface(instance, window, NULL, &surface);
   handleError();
 }
 
-void createImageViews() {
+void CreateImageViews() {
   swapChainImageViews = malloc(swapChainImagesCount * sizeof(VkImageView));
   for (size_t i = 0; i < swapChainImagesCount; i++) {
     VkImageViewCreateInfo imageViewCreateInfo = {
@@ -815,7 +814,7 @@ void createImageViews() {
   }
 }
 
-void createRenderPass() {
+void CreateRenderPass() {
   VkAttachmentDescription colorAttachment = {
       .format = swapChainImageFormat,
       .samples = VK_SAMPLE_COUNT_1_BIT,
@@ -838,12 +837,23 @@ void createRenderPass() {
       .pColorAttachments = &colorAttachmentRef,
   };
 
+  VkSubpassDependency dependency = {
+      .srcSubpass = VK_SUBPASS_EXTERNAL,
+      .dstSubpass = 0,
+      .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+      .srcAccessMask = 0,
+      .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+      .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+  };
+
   VkRenderPassCreateInfo renderPassInfo = {
       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
       .attachmentCount = 1,
       .pAttachments = &colorAttachment,
       .subpassCount = 1,
       .pSubpasses = &subpass,
+      .dependencyCount = 1,
+      .pDependencies = &dependency,
   };
 
   vkCreateRenderPass(device, &renderPassInfo, NULL, &renderPass);
@@ -866,7 +876,7 @@ VkShaderModule createShaderModule(gchar *code, gsize codeSize) {
 
 gboolean readFile(const char *filename, gchar **contents, gsize *length) { return g_file_get_contents(filename, contents, length, NULL); }
 
-void createGraphicsPipeline() {
+void CreateGraphicsPipeline() {
   gchar *vertShaderCode;
   gchar *fragShaderCode;
   gsize lengthVertShaderCode;
@@ -986,7 +996,7 @@ void createGraphicsPipeline() {
   vkDestroyShaderModule(device, vertShaderModule, NULL);
 }
 
-void createFramebuffers() {
+void CreateFramebuffers() {
   swapChainFramebuffers = malloc(swapChainImagesCount * sizeof(VkFramebuffer));
   for (size_t i = 0; i < swapChainImagesCount; i++) {
     VkImageView attachments[] = {swapChainImageViews[i]};
@@ -1007,7 +1017,7 @@ void createFramebuffers() {
   }
 }
 
-void createCommandPool() {
+void CreateCommandPool() {
   VkCommandPoolCreateInfo poolInfo = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
       .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT | VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
@@ -1018,7 +1028,7 @@ void createCommandPool() {
   handleError();
 }
 
-void createCommandBuffers() {
+void CreateCommandBuffers() {
   commandBuffers = malloc(MAX_FRAMES_IN_FLIGHT * sizeof(VkCommandBuffer));
 
   VkCommandBufferAllocateInfo cmdBufferAllocInfo = {
@@ -1032,6 +1042,7 @@ void createCommandBuffers() {
   handleError();
 }
 
+// vkCmd...s
 void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
   VkCommandBufferBeginInfo beginInfo = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -1076,7 +1087,7 @@ void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
   // uses topology of the pipeline
-  // search for topology 
+  // search for topology
   vkCmdDraw(commandBuffer, 3, 1, 0, 0);
   vkCmdEndRenderPass(commandBuffer);
 
@@ -1084,7 +1095,7 @@ void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
   handleError();
 }
 
-void createSyncObjects() {
+void CreateSyncObjects() {
   imageAvailableSemaphores = malloc(MAX_FRAMES_IN_FLIGHT * sizeof(VkSemaphore));
   finishedRenderingSemaphores = malloc(MAX_FRAMES_IN_FLIGHT * sizeof(VkSemaphore));
   inFlightFences = malloc(MAX_FRAMES_IN_FLIGHT * sizeof(VkFence));
@@ -1095,7 +1106,7 @@ void createSyncObjects() {
 
   VkFenceCreateInfo fenceInfo = {
       .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-      .flags = VK_FENCE_CREATE_SIGNALED_BIT,
+      .flags = VK_FENCE_CREATE_SIGNALED_BIT, // the fence says "job is finished" as initial state
   };
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -1125,39 +1136,35 @@ void drawFrame() {
   handleError();
   recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
+  VkSemaphore waitSemaphores[] = {imageAvailableSemaphores[currentFrame]};
+  VkSemaphore signalSemaphores[] = {finishedRenderingSemaphores[currentFrame]};
+
+  VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+
   VkSubmitInfo submitInfo = {
       .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+      .waitSemaphoreCount = 1,
+      .pWaitSemaphores = waitSemaphores,
+      .signalSemaphoreCount = 1,
+      .pSignalSemaphores = signalSemaphores, // will be signaled once the command buffers finished executing
+      .pWaitDstStageMask = waitStages,
+      .commandBufferCount = 1,
+      .pCommandBuffers = &commandBuffers[currentFrame],
   };
-
-  VkSemaphore waitSemaphores[] = {imageAvailableSemaphores[currentFrame]};
-  VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-  submitInfo.waitSemaphoreCount = 1;
-  submitInfo.pWaitSemaphores = waitSemaphores;
-  submitInfo.pWaitDstStageMask = waitStages;
-
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
-
-  VkSemaphore signalSemaphores[] = {finishedRenderingSemaphores[currentFrame]};
-  submitInfo.signalSemaphoreCount = 1;
-  submitInfo.pSignalSemaphores = signalSemaphores;
 
   // submit recorded command buffer
   err = vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]);
   handleError();
 
+  VkSwapchainKHR swapChains[] = {swapChain};
   VkPresentInfoKHR presentInfo = {
       .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+      .waitSemaphoreCount = 1,
+      .pWaitSemaphores = signalSemaphores,
+      .swapchainCount = 1,
+      .pSwapchains = swapChains,
+      .pImageIndices = &imageIndex,
   };
-
-  presentInfo.waitSemaphoreCount = 1;
-  presentInfo.pWaitSemaphores = signalSemaphores;
-
-  VkSwapchainKHR swapChains[] = {swapChain};
-  presentInfo.swapchainCount = 1;
-  presentInfo.pSwapchains = swapChains;
-
-  presentInfo.pImageIndices = &imageIndex;
 
   // present swap chain image
   vkQueuePresentKHR(graphicsQueue, &presentInfo);
@@ -1194,19 +1201,19 @@ void cleanup() {
 }
 
 void initVulkan() {
-  createInstance();
-  checkValidationLayerSupport();
-  setupDebugMessenger();
-  createSurface();
-  pickPhysicalDevice();
-  printQueueFamilies();
-  createLogicalDevice();
-  createSwapChain();
-  createImageViews();
-  createRenderPass();
-  createGraphicsPipeline();
-  createFramebuffers();
-  createCommandPool();
-  createCommandBuffers();
-  createSyncObjects();
+  CreateInstance();
+  CheckValidationLayerSupport();
+  SetupDebugMessenger();
+  CreateSurface();
+  PickPhysicalDevice();
+  PrintQueueFamilies();
+  CreateLogicalDevice();
+  CreateSwapChain();
+  CreateImageViews();
+  CreateRenderPass();
+  CreateGraphicsPipeline();
+  CreateFramebuffers();
+  CreateCommandPool();
+  CreateCommandBuffers();
+  CreateSyncObjects();
 }
