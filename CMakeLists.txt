@@ -2,15 +2,21 @@ cmake_minimum_required(VERSION 3.27)
 
 project(vktutorial LANGUAGES C)
 
-find_package(Vulkan REQUIRED)
-find_package(glfw3  REQUIRED)
+find_package(Vulkan    REQUIRED)
+find_package(glfw3     REQUIRED)
+find_package(PkgConfig REQUIRED)
 
 # Glib2
-find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLIB2 REQUIRED glib-2.0)
 include_directories(${GLIB2_INCLUDE_DIRS})
 link_directories(${GLIB2_LIBRARY_DIRS})
 link_libraries(${GLIB2_LIBRARIES})
+
+# cglm
+pkg_check_modules(CGLM REQUIRED cglm)
+include_directories(${CGLM_INCLUDE_DIRS})
+link_directories(${CGLM_LIBRARY_DIRS})
+link_libraries(${CGLM_LIBRARIES})
 
 # GLAD
 # add_library(glad SHARED glad.c)

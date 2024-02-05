@@ -10,13 +10,15 @@
 #define VKT_ERROR_DEVICE_EXTENSIONS_NOT_AVAILABLE -17
 #define VKT_ERROR_SWAP_CHAIN_NOT_ADEQUATE -18
 
+#define handleError(x) _handleError(__FILE__, __LINE__)
+
 void initWindow();
 void initVulkan();
 void mainloop();
 void cleanup();
 GLFWwindow *getWindow();
-void handleError();
+void _handleError(const char *, int);
 bool checkValidationLayerSupport();
 void destroyDebugUtilsMessenger(VkInstance, VkDebugUtilsMessengerEXT, const VkAllocationCallbacks *);
 void drawFrame();
-void deviceWaitIdle();
+void DeviceWaitIdle();

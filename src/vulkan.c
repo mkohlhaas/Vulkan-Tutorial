@@ -1001,7 +1001,6 @@ void CreateFramebuffers() {
   for (size_t i = 0; i < swapChainImagesCount; i++) {
     VkImageView attachments[] = {swapChainImageViews[i]};
 
-    // TODO: for documentation → renderPass is in the graphics pipeline and the framebuffers
     VkFramebufferCreateInfo framebufferInfo = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .renderPass = renderPass,
@@ -1119,16 +1118,42 @@ void CreateSyncObjects() {
   }
 }
 
+void CleanupSwapChain() {
+  for (int i = 0; i < swapChainImagesCount; i++) {
+    vkDestroyFramebuffer(device, swapChainFramebuffers[i], NULL);
+  }
+  for (int i = 0; i < swapChainImagesCount; i++) {
+    vkDestroyImageView(device, swapChainImageViews[i], NULL);
+  }
+
+  vkDestroySwapchainKHR(device, swapChain, NULL);
+}
+
+void RecreateSwapChain() {
+  int width;
+  int height;
+  glfwGetFramebufferSize(window, &width, &height);
+  vkDeviceWaitIdle(device);
+  CleanupSwapChain();
+  CreateSwapChain();
+  CreateImageViews();
+  CreateFramebuffers();
+}
+
 void drawFrame() {
   // wait for the previous frame to finish
   err = vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
   handleError();
-  err = vkResetFences(device, 1, &inFlightFences[currentFrame]);
-  handleError();
-
   // acquire an image from the swap chain
   uint32_t imageIndex;
   err = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+  if (err == VK_ERROR_OUT_OF_DATE_KHR) {
+    RecreateSwapChain();
+    return;
+  }
+  handleError();
+
+  err = vkResetFences(device, 1, &inFlightFences[currentFrame]);
   handleError();
 
   // record command buffer which draws the scene onto acquired image
@@ -1167,31 +1192,28 @@ void drawFrame() {
   };
 
   // present swap chain image
-  vkQueuePresentKHR(graphicsQueue, &presentInfo);
-
+  err = vkQueuePresentKHR(graphicsQueue, &presentInfo);
+  if (err == VK_ERROR_OUT_OF_DATE_KHR || err == VK_SUBOPTIMAL_KHR) {
+    RecreateSwapChain();
+  } else {
+    handleError();
+  }
   currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void deviceWaitIdle() { vkDeviceWaitIdle(device); };
+void DeviceWaitIdle() { vkDeviceWaitIdle(device); };
 
 void cleanup() {
+  CleanupSwapChain();
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     vkDestroySemaphore(device, finishedRenderingSemaphores[i], NULL);
     vkDestroySemaphore(device, imageAvailableSemaphores[i], NULL);
     vkDestroyFence(device, inFlightFences[i], NULL);
   }
-
   vkDestroyCommandPool(device, commandPool, NULL);
-  for (int i = 0; i < swapChainImagesCount; i++) {
-    vkDestroyFramebuffer(device, swapChainFramebuffers[i], NULL);
-  }
   vkDestroyPipeline(device, graphicsPipeline, NULL);
   vkDestroyPipelineLayout(device, pipelineLayout, NULL);
   vkDestroyRenderPass(device, renderPass, NULL);
-  for (int i = 0; i < swapChainImagesCount; i++) {
-    vkDestroyImageView(device, swapChainImageViews[i], NULL);
-  }
-  vkDestroySwapchainKHR(device, swapChain, NULL);
   vkDestroyDevice(device, NULL);
   destroyDebugUtilsMessenger(instance, debugMessenger, NULL);
   vkDestroySurfaceKHR(instance, surface, NULL);
