@@ -59,12 +59,16 @@ typedef struct QueueFamilyIndices {
   bool isGraphicsFamilyPresent;
 } QueueFamilyIndices;
 
+VkBuffer vertexBuffer;
+VkDeviceMemory vertexBufferMemory;
+
 typedef struct Vertex {
   vec2 pos;
   vec3 color;
 } Vertex;
 
-const Vertex vertices[] = {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}}, {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}}, {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+// const Vertex vertices[] = {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}}, {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}}, {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+const Vertex vertices[] = {{{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}}, {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}}, {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
 
 static VkVertexInputAttributeDescription *getAttributeDescriptions() {
   VkVertexInputAttributeDescription tmpDesc[2] = {{
@@ -80,7 +84,7 @@ static VkVertexInputAttributeDescription *getAttributeDescriptions() {
                                                       .offset = offsetof(Vertex, color),
                                                   }};
   VkVertexInputAttributeDescription *attributeDescriptions = malloc(2 * sizeof(VkVertexInputAttributeDescription));
-  memcpy(attributeDescriptions, tmpDesc, 2 * sizeof(VkVertexInputAttributeDescription ));
+  memcpy(attributeDescriptions, tmpDesc, 2 * sizeof(VkVertexInputAttributeDescription));
   return attributeDescriptions;
 }
 
@@ -93,6 +97,51 @@ static VkVertexInputBindingDescription *getBindingDescription() {
   VkVertexInputBindingDescription *bindingDescription = malloc(1 * sizeof(VkVertexInputBindingDescription));
   memcpy(bindingDescription, tmpDesc, sizeof(VkVertexInputBindingDescription));
   return bindingDescription;
+}
+
+uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+  VkPhysicalDeviceMemoryProperties memProperties;
+  vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+  for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+    if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+      return i;
+    }
+  }
+  err = VKT_ERROR_NO_SUITABLE_MEMORY_AVAILABLE;
+  handleError();
+  return -1;
+}
+
+void CreateVertexBuffer() {
+  VkBufferCreateInfo bufferInfo = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .size = sizeof(vertices),
+      .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+  };
+
+  err = vkCreateBuffer(device, &bufferInfo, NULL, &vertexBuffer);
+  handleError();
+
+  VkMemoryRequirements memRequirements;
+  vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
+
+  VkMemoryAllocateInfo allocInfo = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+      .allocationSize = memRequirements.size,
+      .memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+  };
+
+  err = vkAllocateMemory(device, &allocInfo, NULL, &vertexBufferMemory);
+  handleError();
+
+  vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
+
+  void *data;
+  vkMapMemory(device, vertexBufferMemory, 0, bufferInfo.size, 0, &data);
+  memcpy(data, vertices, (size_t)bufferInfo.size);
+  vkUnmapMemory(device, vertexBufferMemory);
 }
 
 VKAPI_PTR VkBool32 debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes,
@@ -1124,9 +1173,12 @@ void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
   };
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-  // uses topology of the pipeline
-  // search for topology
-  vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+  VkBuffer vertexBuffers[] = {vertexBuffer};
+  VkDeviceSize offsets[] = {0};
+  vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+  vkCmdDraw(commandBuffer, sizeof(vertices) / sizeof(Vertex), 1, 0, 0);
+
   vkCmdEndRenderPass(commandBuffer);
 
   err = vkEndCommandBuffer(commandBuffer);
@@ -1253,6 +1305,8 @@ void cleanup() {
   vkDestroyPipeline(device, graphicsPipeline, NULL);
   vkDestroyPipelineLayout(device, pipelineLayout, NULL);
   vkDestroyRenderPass(device, renderPass, NULL);
+  vkDestroyBuffer(device, vertexBuffer, NULL);
+  vkFreeMemory(device, vertexBufferMemory, NULL);
   vkDestroyDevice(device, NULL);
   destroyDebugUtilsMessenger(instance, debugMessenger, NULL);
   vkDestroySurfaceKHR(instance, surface, NULL);
@@ -1275,6 +1329,7 @@ void initVulkan() {
   CreateGraphicsPipeline();
   CreateFramebuffers();
   CreateCommandPool();
+  CreateVertexBuffer();
   CreateCommandBuffers();
   CreateSyncObjects();
 }

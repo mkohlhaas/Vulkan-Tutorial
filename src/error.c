@@ -167,8 +167,11 @@ void _handleError(const char *fileName, int lineNumber) {
     case VKT_ERROR_SWAP_CHAIN_NOT_ADEQUATE:
       fprintf(stderr, "Error: Swap chain not adequate\n");
       break;
+    case VKT_ERROR_NO_SUITABLE_MEMORY_AVAILABLE:
+      fprintf(stderr, "Error: failed to find suitable memory\n");
+      break;
     };
-    fprintf(stderr, "in file %s, line %d\n", fileName, lineNumber);
+    fprintf(stderr, "in file %s, line %d, error code %d\n", fileName, lineNumber, err);
     exit(EXIT_FAILURE);
-  }
+  };
 }
