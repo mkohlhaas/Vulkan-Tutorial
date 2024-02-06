@@ -62,6 +62,9 @@ typedef struct QueueFamilyIndices {
 VkBuffer vertexBuffer;
 VkDeviceMemory vertexBufferMemory;
 
+VkBuffer indexBuffer;
+VkDeviceMemory indexBufferMemory;
+
 typedef struct Vertex {
   vec2 pos;
   vec3 color;
@@ -69,6 +72,8 @@ typedef struct Vertex {
 
 // const Vertex vertices[] = {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}}, {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}}, {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
 const Vertex vertices[] = {{{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}}, {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}}, {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+
+const uint16_t indices[] = {0, 1, 2, 2, 3, 0};
 
 static VkVertexInputAttributeDescription *getAttributeDescriptions() {
   VkVertexInputAttributeDescription tmpDesc[2] = {{
@@ -1232,7 +1237,9 @@ void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
   VkDeviceSize offsets[] = {0};
   vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-  vkCmdDraw(commandBuffer, sizeof(vertices) / sizeof(Vertex), 1, 0, 0);
+  vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
+  vkCmdDrawIndexed(commandBuffer, sizeof(indices) / sizeof(*indices), 1, 0, 0, 0);
 
   vkCmdEndRenderPass(commandBuffer);
 
@@ -1370,6 +1377,31 @@ void cleanup() {
   glfwTerminate();
 }
 
+void CreateIndexBuffer() {
+  VkDeviceSize bufferSize = sizeof(indices);
+
+  int usageFlags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+  int memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+  VkBuffer stagingBuffer;
+  VkDeviceMemory stagingBufferMemory;
+  CreateBuffer(bufferSize, usageFlags, memoryProperties, &stagingBuffer, &stagingBufferMemory);
+
+  void *data;
+  vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+  memcpy(data, indices, bufferSize);
+  vkUnmapMemory(device, stagingBufferMemory);
+
+  usageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+  memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+  CreateBuffer(bufferSize, usageFlags, memoryProperties, &indexBuffer, &indexBufferMemory);
+
+  CopyBuffer(stagingBuffer, indexBuffer, bufferSize);
+
+  vkDestroyBuffer(device, stagingBuffer, NULL);
+  vkFreeMemory(device, stagingBufferMemory, NULL);
+}
+
 void initVulkan() {
   CreateInstance();
   CheckValidationLayerSupport();
@@ -1385,6 +1417,7 @@ void initVulkan() {
   CreateFramebuffers();
   CreateCommandPool();
   CreateVertexBuffer();
+  CreateIndexBuffer();
   CreateCommandBuffers();
   CreateSyncObjects();
 }
