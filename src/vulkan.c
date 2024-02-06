@@ -113,35 +113,90 @@ uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
   return -1;
 }
 
-void CreateVertexBuffer() {
+void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+  VkCommandBufferAllocateInfo allocInfo = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+      .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+      .commandPool = commandPool,
+      .commandBufferCount = 1,
+  };
+
+  VkCommandBuffer commandBuffer;
+  vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+
+  VkCommandBufferBeginInfo beginInfo = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+      .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+  };
+
+  vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+  VkBufferCopy copyRegion = {
+      .size = size,
+  };
+  vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+  vkEndCommandBuffer(commandBuffer);
+
+  VkSubmitInfo submitInfo = {
+      .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+      .commandBufferCount = 1,
+      .pCommandBuffers = &commandBuffer,
+  };
+
+  vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+  vkQueueWaitIdle(graphicsQueue);
+
+  vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+}
+
+void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer *buffer, VkDeviceMemory *bufferMemory) {
   VkBufferCreateInfo bufferInfo = {
       .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-      .size = sizeof(vertices),
-      .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+      .size = size,
+      .usage = usage,
       .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
   };
 
-  err = vkCreateBuffer(device, &bufferInfo, NULL, &vertexBuffer);
+  err = vkCreateBuffer(device, &bufferInfo, NULL, buffer);
   handleError();
 
   VkMemoryRequirements memRequirements;
-  vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
+  vkGetBufferMemoryRequirements(device, *buffer, &memRequirements);
 
   VkMemoryAllocateInfo allocInfo = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
       .allocationSize = memRequirements.size,
-      .memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+      .memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties),
   };
 
-  err = vkAllocateMemory(device, &allocInfo, NULL, &vertexBufferMemory);
+  err = vkAllocateMemory(device, &allocInfo, NULL, bufferMemory);
   handleError();
 
-  vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
+  vkBindBufferMemory(device, *buffer, *bufferMemory, 0);
+}
+
+void CreateVertexBuffer() {
+  VkDeviceSize bufferSize = sizeof(vertices);
+  int usageFlags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+  int memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+  VkBuffer stagingBuffer;
+  VkDeviceMemory stagingBufferMemory;
+  CreateBuffer(bufferSize, usageFlags, memoryProperties, &stagingBuffer, &stagingBufferMemory);
 
   void *data;
-  vkMapMemory(device, vertexBufferMemory, 0, bufferInfo.size, 0, &data);
-  memcpy(data, vertices, (size_t)bufferInfo.size);
-  vkUnmapMemory(device, vertexBufferMemory);
+  vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+  memcpy(data, vertices, (size_t)bufferSize);
+  vkUnmapMemory(device, stagingBufferMemory);
+
+  usageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+  memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+  CreateBuffer(bufferSize, usageFlags, memoryProperties, &vertexBuffer, &vertexBufferMemory);
+  CopyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+
+  vkDestroyBuffer(device, stagingBuffer, NULL);
+  vkFreeMemory(device, stagingBufferMemory, NULL);
 }
 
 VKAPI_PTR VkBool32 debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes,
