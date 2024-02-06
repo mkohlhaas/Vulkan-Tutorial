@@ -1,4 +1,5 @@
 #include "vkTutorial.h"
+#include <cglm/cglm.h>
 #include <glib.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -57,6 +58,42 @@ typedef struct QueueFamilyIndices {
   uint32_t graphicsFamily;
   bool isGraphicsFamilyPresent;
 } QueueFamilyIndices;
+
+typedef struct Vertex {
+  vec2 pos;
+  vec3 color;
+} Vertex;
+
+const Vertex vertices[] = {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}}, {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}}, {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+
+static VkVertexInputAttributeDescription *getAttributeDescriptions() {
+  VkVertexInputAttributeDescription tmpDesc[2] = {{
+                                                      .binding = 0,
+                                                      .location = 0,
+                                                      .format = VK_FORMAT_R32G32_SFLOAT,
+                                                      .offset = offsetof(Vertex, pos),
+                                                  },
+                                                  {
+                                                      .binding = 0,
+                                                      .location = 1,
+                                                      .format = VK_FORMAT_R32G32B32_SFLOAT,
+                                                      .offset = offsetof(Vertex, color),
+                                                  }};
+  VkVertexInputAttributeDescription *attributeDescriptions = malloc(2 * sizeof(VkVertexInputAttributeDescription));
+  memcpy(attributeDescriptions, tmpDesc, 2 * sizeof(VkVertexInputAttributeDescription ));
+  return attributeDescriptions;
+}
+
+static VkVertexInputBindingDescription *getBindingDescription() {
+  VkVertexInputBindingDescription tmpDesc[1] = {{
+      .binding = 0,
+      .stride = sizeof(Vertex),
+      .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+  }};
+  VkVertexInputBindingDescription *bindingDescription = malloc(1 * sizeof(VkVertexInputBindingDescription));
+  memcpy(bindingDescription, tmpDesc, sizeof(VkVertexInputBindingDescription));
+  return bindingDescription;
+}
 
 VKAPI_PTR VkBool32 debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes,
                                  const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData) {
@@ -905,8 +942,10 @@ void CreateGraphicsPipeline() {
 
   VkPipelineVertexInputStateCreateInfo vertexInput = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-      .vertexBindingDescriptionCount = 0,
-      .vertexAttributeDescriptionCount = 0,
+      .vertexBindingDescriptionCount = 1,
+      .pVertexBindingDescriptions = getBindingDescription(),
+      .vertexAttributeDescriptionCount = 2,
+      .pVertexAttributeDescriptions = getAttributeDescriptions(),
   };
 
   VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
