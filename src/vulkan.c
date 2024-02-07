@@ -1,14 +1,18 @@
 #include "vkTutorial.h"
+#include <bits/time.h>
 #include <cglm/cglm.h>
+#include <cglm/mat4.h>
 #include <glib.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <vulkan/vulkan_core.h>
 
-const int MAX_FRAMES_IN_FLIGHT = 2;
+#define MAX_FRAMES_IN_FLIGHT 2
+#define BILLION 1000000000L
 
 extern GLFWwindow *window;
 
@@ -42,6 +46,7 @@ VkSemaphore *finishedRenderingSemaphores;
 VkFence *inFlightFences;
 
 uint32_t currentFrame = 0;
+struct timespec startTime;
 
 // required validation layers
 const char *requiredValidationLayers[] = {"VK_LAYER_KHRONOS_validation"};
@@ -65,13 +70,95 @@ VkDeviceMemory vertexBufferMemory;
 VkBuffer indexBuffer;
 VkDeviceMemory indexBufferMemory;
 
+VkBuffer uniformBuffers[MAX_FRAMES_IN_FLIGHT];
+VkDeviceMemory uniformBuffersMemory[MAX_FRAMES_IN_FLIGHT];
+void *uniformBuffersMapped[MAX_FRAMES_IN_FLIGHT];
+VkDescriptorSetLayout descriptorSetLayout;
+
+typedef struct UniformBufferObject {
+  mat4 model;
+  mat4 view;
+  mat4 proj;
+} UniformBufferObject;
+
+uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+  VkPhysicalDeviceMemoryProperties memProperties;
+  vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+  for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+    if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+      return i;
+    }
+  }
+  err = VKT_ERROR_NO_SUITABLE_MEMORY_AVAILABLE;
+  handleError();
+  return -1;
+}
+
+void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer *buffer, VkDeviceMemory *bufferMemory) {
+  VkBufferCreateInfo bufferInfo = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .size = size,
+      .usage = usage,
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+  };
+
+  err = vkCreateBuffer(device, &bufferInfo, NULL, buffer);
+  handleError();
+
+  VkMemoryRequirements memRequirements;
+  vkGetBufferMemoryRequirements(device, *buffer, &memRequirements);
+
+  VkMemoryAllocateInfo allocInfo = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+      .allocationSize = memRequirements.size,
+      .memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties),
+  };
+
+  err = vkAllocateMemory(device, &allocInfo, NULL, bufferMemory);
+  handleError();
+
+  vkBindBufferMemory(device, *buffer, *bufferMemory, 0);
+}
+
+void CreateUniformBuffers() {
+  VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+  int bufferUsageFlags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+  int memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    CreateBuffer(bufferSize, bufferUsageFlags, memoryProperties, &uniformBuffers[i], &uniformBuffersMemory[i]);
+    vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+  }
+}
+
+void CreateDescriptorSetLayout() {
+  VkDescriptorSetLayoutBinding uboLayoutBinding = {
+      .binding = 0,
+      .descriptorCount = 1,
+      .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+      .pImmutableSamplers = NULL,
+      .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+  };
+
+  VkDescriptorSetLayoutCreateInfo layoutInfo = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .bindingCount = 1,
+      .pBindings = &uboLayoutBinding,
+  };
+
+  err = vkCreateDescriptorSetLayout(device, &layoutInfo, NULL, &descriptorSetLayout);
+  handleError();
+}
+
 typedef struct Vertex {
   vec2 pos;
   vec3 color;
 } Vertex;
 
-// const Vertex vertices[] = {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}}, {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}}, {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
-const Vertex vertices[] = {{{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}}, {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}}, {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+const Vertex vertices[] = {{{-1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}},
+                           {{+1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}},
+                           {{+1.0f, +1.0f}, {0.0f, 0.0f, 1.0f}},
+                           {{-1.0f, +1.0f}, {1.0f, 1.0f, 1.0f}}};
 
 const uint16_t indices[] = {0, 1, 2, 2, 3, 0};
 
@@ -102,20 +189,6 @@ static VkVertexInputBindingDescription *getBindingDescription() {
   VkVertexInputBindingDescription *bindingDescription = malloc(1 * sizeof(VkVertexInputBindingDescription));
   memcpy(bindingDescription, tmpDesc, sizeof(VkVertexInputBindingDescription));
   return bindingDescription;
-}
-
-uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
-  VkPhysicalDeviceMemoryProperties memProperties;
-  vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-
-  for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-    if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-      return i;
-    }
-  }
-  err = VKT_ERROR_NO_SUITABLE_MEMORY_AVAILABLE;
-  handleError();
-  return -1;
 }
 
 void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
@@ -153,32 +226,6 @@ void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
   vkQueueWaitIdle(graphicsQueue);
 
   vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
-}
-
-void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer *buffer, VkDeviceMemory *bufferMemory) {
-  VkBufferCreateInfo bufferInfo = {
-      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-      .size = size,
-      .usage = usage,
-      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-  };
-
-  err = vkCreateBuffer(device, &bufferInfo, NULL, buffer);
-  handleError();
-
-  VkMemoryRequirements memRequirements;
-  vkGetBufferMemoryRequirements(device, *buffer, &memRequirements);
-
-  VkMemoryAllocateInfo allocInfo = {
-      .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-      .allocationSize = memRequirements.size,
-      .memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties),
-  };
-
-  err = vkAllocateMemory(device, &allocInfo, NULL, bufferMemory);
-  handleError();
-
-  vkBindBufferMemory(device, *buffer, *bufferMemory, 0);
 }
 
 void CreateVertexBuffer() {
@@ -1113,8 +1160,8 @@ void CreateGraphicsPipeline() {
 
   VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .setLayoutCount = 0,
-      .pushConstantRangeCount = 0,
+      .setLayoutCount = 1,
+      .pSetLayouts = &descriptorSetLayout,
   };
 
   err = vkCreatePipelineLayout(device, &pipelineLayoutInfo, NULL, &pipelineLayout);
@@ -1236,7 +1283,6 @@ void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
   VkBuffer vertexBuffers[] = {vertexBuffer};
   VkDeviceSize offsets[] = {0};
   vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
   vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
   vkCmdDrawIndexed(commandBuffer, sizeof(indices) / sizeof(*indices), 1, 0, 0, 0);
@@ -1293,6 +1339,44 @@ void RecreateSwapChain() {
   CreateFramebuffers();
 }
 
+void UpdateUniformBuffer(uint32_t currentImage) {
+  struct timespec endTime;
+  clock_gettime(CLOCK_MONOTONIC, &endTime);
+  float diffTime = BILLION * (endTime.tv_sec - startTime.tv_sec) + endTime.tv_nsec - startTime.tv_nsec;
+  diffTime /= BILLION;
+  fprintf(stderr, "elapsed time = %f seconds\n", diffTime);
+
+  // model, view, projection ubo
+  UniformBufferObject ubo;
+  // model
+  mat4 model;
+  glm_mat4_identity(model);
+  vec3 v1 = {0.0f, 0.0f, 1.0f};
+  glm_rotate(model, diffTime * glm_rad(90.0f), v1);
+
+  // view
+  vec3 v2 = {2.0f, 2.0f, 2.0f};
+  vec3 v3 = {0.0f, 0.0f, 0.0f};
+  vec3 v4 = {0.0f, 0.0f, 1.0f};
+  vec4 view;
+  glm_lookat(v2, v3, v4, &view);
+
+  // projection
+  vec4 proj;
+  glm_perspective(glm_rad(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f, &proj);
+  // proj[1][1] *= -1;
+
+  // glm_mat4_print(model, stderr);
+  // glm_vec3_print(view, stderr);
+  // glm_vec4_print(proj, stderr);
+
+  glm_mat4_copy(model, ubo.model);
+  glm_mat4_copy(&view, ubo.view);
+  glm_mat4_copy(&proj, ubo.proj);
+
+  memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+}
+
 void drawFrame() {
   // wait for the previous frame to finish
   err = vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
@@ -1305,6 +1389,8 @@ void drawFrame() {
     return;
   }
   handleError();
+
+  UpdateUniformBuffer(currentFrame);
 
   err = vkResetFences(device, 1, &inFlightFences[currentFrame]);
   handleError();
@@ -1367,6 +1453,13 @@ void cleanup() {
   vkDestroyPipeline(device, graphicsPipeline, NULL);
   vkDestroyPipelineLayout(device, pipelineLayout, NULL);
   vkDestroyRenderPass(device, renderPass, NULL);
+  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    vkDestroyBuffer(device, uniformBuffers[i], NULL);
+    vkFreeMemory(device, uniformBuffersMemory[i], NULL);
+  }
+  vkDestroyDescriptorSetLayout(device, descriptorSetLayout, NULL);
+  vkDestroyBuffer(device, indexBuffer, NULL);
+  vkFreeMemory(device, indexBufferMemory, NULL);
   vkDestroyBuffer(device, vertexBuffer, NULL);
   vkFreeMemory(device, vertexBufferMemory, NULL);
   vkDestroyDevice(device, NULL);
@@ -1413,11 +1506,17 @@ void initVulkan() {
   CreateSwapChain();
   CreateImageViews();
   CreateRenderPass();
+  CreateDescriptorSetLayout();
   CreateGraphicsPipeline();
   CreateFramebuffers();
   CreateCommandPool();
   CreateVertexBuffer();
   CreateIndexBuffer();
+  CreateUniformBuffers();
   CreateCommandBuffers();
   CreateSyncObjects();
+
+  // set start time of program
+  struct timespec ts1;
+  clock_gettime(CLOCK_MONOTONIC, &startTime); /* mark start time */
 }

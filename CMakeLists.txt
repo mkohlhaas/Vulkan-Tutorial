@@ -23,7 +23,7 @@ link_libraries(${CGLM_LIBRARIES})
 # target_include_directories(glad PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(${PROJECT_NAME} src/main.c src/vulkan.c src/window.c src/error.c)
-target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw)
+target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw m)
 
 add_custom_command(
   OUTPUT  vert.spv

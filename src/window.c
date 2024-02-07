@@ -1,4 +1,5 @@
 #include "vkTutorial.h"
+#include <GLFW/glfw3.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -12,7 +13,7 @@ static void error_callback(int error, const char *description) { fprintf(stderr,
 
 // pressing ESC key closes window
 static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
-  if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+  if ((key == GLFW_KEY_ESCAPE || key == GLFW_KEY_Q) && action == GLFW_PRESS) {
     glfwSetWindowShouldClose(window, GLFW_TRUE);
   }
 }
