@@ -1,3 +1,8 @@
+#define MAX_FRAMES_IN_FLIGHT 2
+#define NANO 1000000000L
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 #include "vkTutorial.h"
 #include <bits/time.h>
 #include <cglm/cglm.h>
@@ -9,9 +14,6 @@
 #include <string.h>
 #include <time.h>
 #include <vulkan/vulkan_core.h>
-
-#define MAX_FRAMES_IN_FLIGHT 2
-#define NANO 1000000000L
 
 extern GLFWwindow *window;
 
@@ -75,7 +77,9 @@ void *uniformBuffersMapped[MAX_FRAMES_IN_FLIGHT];
 VkDescriptorSetLayout descriptorSetLayout;
 VkDescriptorPool descriptorPool;
 VkDescriptorSet descriptorSets[MAX_FRAMES_IN_FLIGHT];
-;
+
+VkImage textureImage;
+VkDeviceMemory textureImageMemory;
 
 typedef struct UniformBufferObject {
   mat4 model;
@@ -241,43 +245,6 @@ static VkVertexInputBindingDescription *getBindingDescription() {
   VkVertexInputBindingDescription *bindingDescription = malloc(1 * sizeof(VkVertexInputBindingDescription));
   memcpy(bindingDescription, tmpDesc, sizeof(VkVertexInputBindingDescription));
   return bindingDescription;
-}
-
-void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-  VkCommandBufferAllocateInfo allocInfo = {
-      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-      .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-      .commandPool = commandPool,
-      .commandBufferCount = 1,
-  };
-
-  VkCommandBuffer commandBuffer;
-  vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
-
-  VkCommandBufferBeginInfo beginInfo = {
-      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-      .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-  };
-
-  vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-  VkBufferCopy copyRegion = {
-      .size = size,
-  };
-  vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-
-  vkEndCommandBuffer(commandBuffer);
-
-  VkSubmitInfo submitInfo = {
-      .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-      .commandBufferCount = 1,
-      .pCommandBuffers = &commandBuffer,
-  };
-
-  vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-  vkQueueWaitIdle(graphicsQueue);
-
-  vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }
 
 void CreateVertexBuffer() {
@@ -1415,11 +1382,11 @@ void UpdateUniformBuffer(uint32_t currentImage) {
   vec3 v3 = {0.0f, 0.0f, 0.0f};
   vec3 v4 = {0.0f, 0.0f, 1.0f};
   mat4 view;
-  glm_lookat(v2, v3, v4, &view);
+  glm_lookat(v2, v3, v4, (vec4 *)&view);
 
   // projection
   mat4 proj;
-  glm_perspective(glm_rad(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f, &proj);
+  glm_perspective(glm_rad(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f, (vec4 *)&proj);
   // proj[1][1] *= -1;
 
   glm_mat4_print(model, stderr);
@@ -1498,6 +1465,199 @@ void drawFrame() {
 
 void DeviceWaitIdle() { vkDeviceWaitIdle(device); };
 
+void CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
+                 VkImage *image, VkDeviceMemory *imageMemory) {
+
+  VkImageCreateInfo imageInfo = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+      .imageType = VK_IMAGE_TYPE_2D,
+      .extent.width = width,
+      .extent.height = height,
+      .extent.depth = 1,
+      .mipLevels = 1,
+      .arrayLayers = 1,
+      .format = format,
+      .tiling = tiling,
+      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .usage = usage,
+      .samples = VK_SAMPLE_COUNT_1_BIT,
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+  };
+
+  err = vkCreateImage(device, &imageInfo, NULL, image);
+  handleError();
+
+  VkMemoryRequirements memRequirements;
+  vkGetImageMemoryRequirements(device, *image, &memRequirements);
+
+  VkMemoryAllocateInfo allocInfo = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+      .allocationSize = memRequirements.size,
+      .memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties),
+  };
+
+  err = vkAllocateMemory(device, &allocInfo, NULL, imageMemory);
+  handleError();
+
+  err = vkBindImageMemory(device, *image, *imageMemory, 0);
+  handleError();
+}
+
+VkCommandBuffer beginSingleTimeCommands() {
+  VkCommandBufferAllocateInfo allocInfo = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+      .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+      .commandPool = commandPool,
+      .commandBufferCount = 1,
+  };
+
+  VkCommandBuffer commandBuffer;
+  vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+
+  VkCommandBufferBeginInfo beginInfo = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+      .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+  };
+
+  vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+  return commandBuffer;
+}
+
+void endSingleTimeCommands(VkCommandBuffer commandBuffer) {
+  vkEndCommandBuffer(commandBuffer);
+
+  VkSubmitInfo submitInfo = {
+      .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+      .commandBufferCount = 1,
+      .pCommandBuffers = &commandBuffer,
+  };
+
+  vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+  vkQueueWaitIdle(graphicsQueue);
+
+  vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+}
+
+void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+  VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+
+  VkBufferCopy copyRegion = {
+      .size = size,
+  };
+  vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+  endSingleTimeCommands(commandBuffer);
+}
+
+void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+  VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+
+  // image memory barrier (pipeline barrier)
+  VkImageMemoryBarrier barrier = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .oldLayout = oldLayout,
+      .newLayout = newLayout,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = image,
+      .subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+      .subresourceRange.baseMipLevel = 0,
+      .subresourceRange.levelCount = 1,
+      .subresourceRange.baseArrayLayer = 0,
+      .subresourceRange.layerCount = 1,
+  };
+
+  VkPipelineStageFlags sourceStage;
+  VkPipelineStageFlags destinationStage;
+
+  if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+    barrier.srcAccessMask = 0;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+    sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+  } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+    sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+  } else {
+    err = VKT_ERROR_UNSUPPORTED_LAYOUT_TRANSITION;
+    handleError();
+  }
+
+  vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, NULL, 0, NULL, 1, &barrier);
+
+  endSingleTimeCommands(commandBuffer);
+}
+
+void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
+  VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+
+  VkBufferImageCopy region = {
+      .bufferOffset = 0,
+      .bufferRowLength = 0,
+      .bufferImageHeight = 0,
+      .imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+      .imageSubresource.mipLevel = 0,
+      .imageSubresource.baseArrayLayer = 0,
+      .imageSubresource.layerCount = 1,
+      .imageOffset = {0, 0, 0},
+      .imageExtent = {width, height, 1},
+  };
+
+  vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+  endSingleTimeCommands(commandBuffer);
+}
+
+void CreateTextureImage() {
+  int texWidth, texHeight, texChannels;
+  stbi_uc *pixels = stbi_load("textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+  VkDeviceSize imageSize = texWidth * texHeight * 4;
+  fprintf(stderr, "image width: %d height: %d size: %lu\n", texWidth, texHeight, imageSize);
+
+  if (!pixels) {
+    err = VKT_ERROR_NO_TEXTURE_FILE;
+    handleError();
+  }
+
+  // staging area
+  VkBuffer stagingBuffer;
+  VkDeviceMemory stagingBufferMemory;
+  int bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+  int memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+  CreateBuffer(imageSize, bufferUsageFlags, memoryProperties, &stagingBuffer, &stagingBufferMemory);
+
+  // transfer image to mapped staging area
+  void *data;
+  vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+  memcpy(data, pixels, imageSize);
+  vkUnmapMemory(device, stagingBufferMemory);
+
+  // create device local image (VkImage)
+  CreateImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+              VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &textureImage, &textureImageMemory);
+
+  // transition layout and copy staging area to image
+  VkImageLayout oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  VkImageLayout newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  TransitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, oldLayout, newLayout);
+
+  CopyBufferToImage(stagingBuffer, textureImage, texWidth, texHeight);
+
+  oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  TransitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, oldLayout, newLayout);
+
+  // cleanup
+  stbi_image_free(pixels);
+  vkDestroyBuffer(device, stagingBuffer, NULL);
+  vkFreeMemory(device, stagingBufferMemory, NULL);
+}
+
 void cleanup() {
   CleanupSwapChain();
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -1513,6 +1673,9 @@ void cleanup() {
     vkDestroyBuffer(device, uniformBuffers[i], NULL);
     vkFreeMemory(device, uniformBuffersMemory[i], NULL);
   }
+  vkDestroyDescriptorPool(device, descriptorPool, NULL);
+  vkDestroyImage(device, textureImage, NULL);
+  vkFreeMemory(device, textureImageMemory, NULL);
   vkDestroyDescriptorSetLayout(device, descriptorSetLayout, NULL);
   vkDestroyBuffer(device, indexBuffer, NULL);
   vkFreeMemory(device, indexBufferMemory, NULL);
@@ -1566,6 +1729,7 @@ void initVulkan() {
   CreateGraphicsPipeline();
   CreateFramebuffers();
   CreateCommandPool();
+  CreateTextureImage();
   CreateVertexBuffer();
   CreateIndexBuffer();
   CreateUniformBuffers();

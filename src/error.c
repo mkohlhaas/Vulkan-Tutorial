@@ -170,6 +170,12 @@ void _handleError(const char *fileName, int lineNumber) {
     case VKT_ERROR_NO_SUITABLE_MEMORY_AVAILABLE:
       fprintf(stderr, "Error: failed to find suitable memory\n");
       break;
+    case VKT_ERROR_NO_TEXTURE_FILE:
+      fprintf(stderr, "Error: failed to load texture image\n");
+      break;
+    case VKT_ERROR_UNSUPPORTED_LAYOUT_TRANSITION:
+      fprintf(stderr, "Error: unsupported layout transition\n");
+      break;
     };
     fprintf(stderr, "in file %s, line %d, error code %d\n", fileName, lineNumber, err);
     exit(EXIT_FAILURE);

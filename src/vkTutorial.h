@@ -10,6 +10,8 @@
 #define VKT_ERROR_DEVICE_EXTENSIONS_NOT_AVAILABLE -17
 #define VKT_ERROR_SWAP_CHAIN_NOT_ADEQUATE -18
 #define VKT_ERROR_NO_SUITABLE_MEMORY_AVAILABLE -19
+#define VKT_ERROR_NO_TEXTURE_FILE -20
+#define VKT_ERROR_UNSUPPORTED_LAYOUT_TRANSITION -21
 
 #define handleError(x) _handleError(__FILE__, __LINE__)
 
@@ -23,3 +25,4 @@ bool checkValidationLayerSupport();
 void destroyDebugUtilsMessenger(VkInstance, VkDebugUtilsMessengerEXT, const VkAllocationCallbacks *);
 void drawFrame();
 void DeviceWaitIdle();
+void CopyBuffer(VkBuffer, VkBuffer, VkDeviceSize);

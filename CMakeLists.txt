@@ -38,4 +38,6 @@ add_custom_command(
 
 add_custom_target(Compile_Shaders DEPENDS vert.spv frag.spv)
 
-configure_file(vk_layer_settings.txt ${CMAKE_CURRENT_BINARY_DIR}/ COPYONLY)
+# configure_file(vk_layer_settings.txt ${CMAKE_CURRENT_BINARY_DIR}/ COPYONLY)
+configure_file(vk_layer_settings.txt . COPYONLY)
+configure_file(textures/texture.jpg textures/texture.jpg COPYONLY)
