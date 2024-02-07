@@ -1,7 +1,6 @@
 #include "vkTutorial.h"
 #include <bits/time.h>
 #include <cglm/cglm.h>
-#include <cglm/mat4.h>
 #include <glib.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -12,7 +11,7 @@
 #include <vulkan/vulkan_core.h>
 
 #define MAX_FRAMES_IN_FLIGHT 2
-#define BILLION 1000000000L
+#define NANO 1000000000L
 
 extern GLFWwindow *window;
 
@@ -74,6 +73,9 @@ VkBuffer uniformBuffers[MAX_FRAMES_IN_FLIGHT];
 VkDeviceMemory uniformBuffersMemory[MAX_FRAMES_IN_FLIGHT];
 void *uniformBuffersMapped[MAX_FRAMES_IN_FLIGHT];
 VkDescriptorSetLayout descriptorSetLayout;
+VkDescriptorPool descriptorPool;
+VkDescriptorSet descriptorSets[MAX_FRAMES_IN_FLIGHT];
+;
 
 typedef struct UniformBufferObject {
   mat4 model;
@@ -148,6 +150,56 @@ void CreateDescriptorSetLayout() {
 
   err = vkCreateDescriptorSetLayout(device, &layoutInfo, NULL, &descriptorSetLayout);
   handleError();
+}
+
+void CreateDescriptorPool() {
+  VkDescriptorPoolSize poolSize = {
+      poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+      poolSize.descriptorCount = MAX_FRAMES_IN_FLIGHT,
+  };
+
+  VkDescriptorPoolCreateInfo poolInfo = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+      .poolSizeCount = 1,
+      .pPoolSizes = &poolSize,
+      .maxSets = MAX_FRAMES_IN_FLIGHT,
+  };
+
+  err = vkCreateDescriptorPool(device, &poolInfo, NULL, &descriptorPool);
+  handleError();
+}
+
+void CreateDescriptorSets() {
+  VkDescriptorSetLayout layouts[MAX_FRAMES_IN_FLIGHT] = {descriptorSetLayout, descriptorSetLayout};
+  VkDescriptorSetAllocateInfo allocInfo = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+      .descriptorPool = descriptorPool,
+      .descriptorSetCount = MAX_FRAMES_IN_FLIGHT,
+      .pSetLayouts = layouts,
+  };
+
+  err = vkAllocateDescriptorSets(device, &allocInfo, descriptorSets);
+  handleError();
+
+  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    VkDescriptorBufferInfo bufferInfo = {
+        .buffer = uniformBuffers[i],
+        .offset = 0,
+        .range = sizeof(UniformBufferObject),
+    };
+
+    VkWriteDescriptorSet descriptorWrite = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = descriptorSets[i],
+        .dstBinding = 0,
+        .dstArrayElement = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .pBufferInfo = &bufferInfo,
+    };
+
+    vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, NULL);
+  }
 }
 
 typedef struct Vertex {
@@ -1284,6 +1336,7 @@ void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
   VkDeviceSize offsets[] = {0};
   vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
   vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, NULL);
 
   vkCmdDrawIndexed(commandBuffer, sizeof(indices) / sizeof(*indices), 1, 0, 0, 0);
 
@@ -1329,9 +1382,9 @@ void CleanupSwapChain() {
 }
 
 void RecreateSwapChain() {
-  int width;
-  int height;
-  glfwGetFramebufferSize(window, &width, &height);
+  // int width;
+  // int height;
+  // glfwGetFramebufferSize(window, &width, &height);
   vkDeviceWaitIdle(device);
   CleanupSwapChain();
   CreateSwapChain();
@@ -1340,13 +1393,16 @@ void RecreateSwapChain() {
 }
 
 void UpdateUniformBuffer(uint32_t currentImage) {
+  // running time
   struct timespec endTime;
   clock_gettime(CLOCK_MONOTONIC, &endTime);
-  float diffTime = BILLION * (endTime.tv_sec - startTime.tv_sec) + endTime.tv_nsec - startTime.tv_nsec;
-  diffTime /= BILLION;
+  float diffTime = NANO * (endTime.tv_sec - startTime.tv_sec) + endTime.tv_nsec - startTime.tv_nsec;
+  diffTime /= NANO;
+  fprintf(stderr, "========================================\n");
   fprintf(stderr, "elapsed time = %f seconds\n", diffTime);
+  fprintf(stderr, "========================================\n");
 
-  // model, view, projection ubo
+  // uniform buffer object
   UniformBufferObject ubo;
   // model
   mat4 model;
@@ -1358,21 +1414,21 @@ void UpdateUniformBuffer(uint32_t currentImage) {
   vec3 v2 = {2.0f, 2.0f, 2.0f};
   vec3 v3 = {0.0f, 0.0f, 0.0f};
   vec3 v4 = {0.0f, 0.0f, 1.0f};
-  vec4 view;
+  mat4 view;
   glm_lookat(v2, v3, v4, &view);
 
   // projection
-  vec4 proj;
+  mat4 proj;
   glm_perspective(glm_rad(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f, &proj);
   // proj[1][1] *= -1;
 
-  // glm_mat4_print(model, stderr);
-  // glm_vec3_print(view, stderr);
-  // glm_vec4_print(proj, stderr);
+  glm_mat4_print(model, stderr);
+  glm_mat4_print(view, stderr);
+  glm_mat4_print(proj, stderr);
 
   glm_mat4_copy(model, ubo.model);
-  glm_mat4_copy(&view, ubo.view);
-  glm_mat4_copy(&proj, ubo.proj);
+  glm_mat4_copy(view, ubo.view);
+  glm_mat4_copy(proj, ubo.proj);
 
   memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
@@ -1513,6 +1569,8 @@ void initVulkan() {
   CreateVertexBuffer();
   CreateIndexBuffer();
   CreateUniformBuffers();
+  CreateDescriptorPool();
+  CreateDescriptorSets();
   CreateCommandBuffers();
   CreateSyncObjects();
 
