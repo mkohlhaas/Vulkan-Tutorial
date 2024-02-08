@@ -80,6 +80,8 @@ VkDescriptorSet descriptorSets[MAX_FRAMES_IN_FLIGHT];
 
 VkImage textureImage;
 VkDeviceMemory textureImageMemory;
+VkImageView textureImageView;
+VkSampler textureSampler;
 
 typedef struct UniformBufferObject {
   mat4 model;
@@ -985,12 +987,17 @@ void CreateLogicalDevice() {
       .pQueuePriorities = &queuePriority,
   };
 
+  VkPhysicalDeviceFeatures deviceFeatures = {
+      deviceFeatures.samplerAnisotropy = VK_TRUE,
+  };
+
   VkDeviceCreateInfo deviceCreateInfo = {
       .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
       .queueCreateInfoCount = 1,
       .pQueueCreateInfos = &deviceQueueCreateInfo,
       .enabledExtensionCount = requiredDeviceExtensionsCount,
       .ppEnabledExtensionNames = requiredDeviceExtensions,
+      .pEnabledFeatures = &deviceFeatures,
   };
 
   err = vkCreateDevice(physicalDevice, &deviceCreateInfo, NULL, &device);
@@ -1001,6 +1008,34 @@ void CreateLogicalDevice() {
 void CreateSurface() {
   err = glfwCreateWindowSurface(instance, window, NULL, &surface);
   handleError();
+}
+
+VkImageView CreateImageView(VkImage image, VkFormat format) {
+  VkImageViewCreateInfo viewInfo = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+      .image = image,
+      .viewType = VK_IMAGE_VIEW_TYPE_2D,
+      .format = format,
+      .subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+      .subresourceRange.baseMipLevel = 0,
+      .subresourceRange.levelCount = 1,
+      .subresourceRange.baseArrayLayer = 0,
+      .subresourceRange.layerCount = 1,
+  };
+
+  VkImageView imageView;
+  err = vkCreateImageView(device, &viewInfo, nullptr, &imageView);
+  handleError();
+
+  return imageView;
+}
+
+void createImageViews() {
+  swapChainImageViews = malloc(swapChainImagesCount * sizeof(VkImageView));
+
+  for (size_t i = 0; i < swapChainImagesCount; i++) {
+    swapChainImageViews[i] = CreateImageView(swapChainImages[i], swapChainImageFormat);
+  }
 }
 
 void CreateImageViews() {
@@ -1407,7 +1442,7 @@ void drawFrame() {
   // acquire an image from the swap chain
   uint32_t imageIndex;
   err = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
-  if (err == VK_ERROR_OUT_OF_DATE_KHR) {
+  if (err == VK_ERROR_OUT_OF_DATE_KHR || err == VK_SUBOPTIMAL_KHR) {
     RecreateSwapChain();
     return;
   }
@@ -1658,6 +1693,32 @@ void CreateTextureImage() {
   vkFreeMemory(device, stagingBufferMemory, NULL);
 }
 
+void CreateTextureImageView() { textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB); }
+
+void CreateTextureSampler() {
+  VkPhysicalDeviceProperties properties = {};
+  vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+
+  VkSamplerCreateInfo samplerInfo = {
+      .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+      .magFilter = VK_FILTER_LINEAR,
+      .minFilter = VK_FILTER_LINEAR,
+      .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+      .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+      .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+      .anisotropyEnable = VK_TRUE,
+      .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
+      .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+      .unnormalizedCoordinates = VK_FALSE,
+      .compareEnable = VK_FALSE,
+      .compareOp = VK_COMPARE_OP_ALWAYS,
+      .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+  };
+
+  err = vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler);
+  handleError();
+}
+
 void cleanup() {
   CleanupSwapChain();
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -1674,6 +1735,8 @@ void cleanup() {
     vkFreeMemory(device, uniformBuffersMemory[i], NULL);
   }
   vkDestroyDescriptorPool(device, descriptorPool, NULL);
+  vkDestroySampler(device, textureSampler, NULL);
+  vkDestroyImageView(device, textureImageView, NULL);
   vkDestroyImage(device, textureImage, NULL);
   vkFreeMemory(device, textureImageMemory, NULL);
   vkDestroyDescriptorSetLayout(device, descriptorSetLayout, NULL);
@@ -1730,6 +1793,8 @@ void initVulkan() {
   CreateFramebuffers();
   CreateCommandPool();
   CreateTextureImage();
+  CreateTextureImageView();
+  CreateTextureSampler();
   CreateVertexBuffer();
   CreateIndexBuffer();
   CreateUniformBuffers();
