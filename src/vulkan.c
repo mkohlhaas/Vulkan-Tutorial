@@ -995,7 +995,7 @@ void PrintQueueFamilies() {
 }
 
 void PickPhysicalDevice() {
-  // get count of phsysical devices
+  // get number of physical devices
   uint32_t physicalDeviceCount;
   vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, NULL);
 
