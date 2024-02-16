@@ -7,6 +7,7 @@ const char *TEXTURE_PATH = "textures/viking_room.png";
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include "vk.h"
 #include "vkTutorial.h"
 #include <bits/time.h>
 #include <cglm/cglm.h>
@@ -246,18 +247,17 @@ void CreateDescriptorSets() {
   }
 }
 
-typedef struct Vertex {
-  vec3 pos;
-  vec3 color;
-  vec2 texCoord;
-} Vertex;
+// const Vertex vertices[] = {{{-1.25f, -1.25f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},  {{+1.25f, -1.25f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+//                            {{+1.25f, +1.25f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},  {{-1.25f, +1.25f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+//                            {{-1.25f, -1.25f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}}, {{+1.25f, -1.25f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f,
+//                            0.0f}},
+//                            {{+1.25f, +1.25f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}, {{-1.25f, +1.25f, -0.5f}, {1.0f, 1.0f, 1.0f},
+//                            {1.0f, 1.0f}}};
 
-const Vertex vertices[] = {{{-1.25f, -1.25f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},  {{+1.25f, -1.25f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-                           {{+1.25f, +1.25f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},  {{-1.25f, +1.25f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-                           {{-1.25f, -1.25f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}}, {{+1.25f, -1.25f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-                           {{+1.25f, +1.25f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}, {{-1.25f, +1.25f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}};
+// const uint16_t indices[] = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
 
-const uint16_t indices[] = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
+extern GArray *vertices;
+extern GArray *indices;
 
 static VkVertexInputAttributeDescription *getAttributeDescriptions() {
   VkVertexInputAttributeDescription tmpDesc[] = {{
@@ -297,7 +297,7 @@ static VkVertexInputBindingDescription *getBindingDescription() {
 }
 
 void CreateVertexBuffer() {
-  VkDeviceSize bufferSize = sizeof(vertices);
+  VkDeviceSize bufferSize = vertices->len;
   int usageFlags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
   int memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
@@ -307,7 +307,7 @@ void CreateVertexBuffer() {
 
   void *data;
   vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-  memcpy(data, vertices, (size_t)bufferSize);
+  memcpy(data, vertices->data, bufferSize);
   vkUnmapMemory(device, stagingBufferMemory);
 
   usageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
@@ -1477,7 +1477,7 @@ void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
   vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, NULL);
 
-  vkCmdDrawIndexed(commandBuffer, sizeof(indices) / sizeof(*indices), 1, 0, 0, 0);
+  vkCmdDrawIndexed(commandBuffer, indices->len / sizeof(int), 1, 0, 0, 0);
 
   vkCmdEndRenderPass(commandBuffer);
 
@@ -1855,7 +1855,7 @@ void cleanup() {
 }
 
 void CreateIndexBuffer() {
-  VkDeviceSize bufferSize = sizeof(indices);
+  VkDeviceSize bufferSize = indices->len;
 
   int usageFlags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
   int memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
@@ -1866,7 +1866,7 @@ void CreateIndexBuffer() {
 
   void *data;
   vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-  memcpy(data, indices, bufferSize);
+  memcpy(data, indices->data, bufferSize);
   vkUnmapMemory(device, stagingBufferMemory);
 
   usageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;

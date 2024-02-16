@@ -5,6 +5,9 @@ project(vktutorial LANGUAGES C)
 find_package(Vulkan    REQUIRED)
 find_package(glfw3     REQUIRED)
 find_package(PkgConfig REQUIRED)
+find_package(FLEX      REQUIRED)
+
+FLEX_TARGET(SCANNER lexer.l ${CMAKE_CURRENT_BINARY_DIR}/lexer.c)
 
 # Glib2
 pkg_check_modules(GLIB2 REQUIRED glib-2.0)
@@ -22,10 +25,11 @@ link_libraries(${CGLM_LIBRARIES})
 # add_library(glad SHARED glad.c)
 # target_include_directories(glad PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(${PROJECT_NAME} src/main.c src/vulkan.c src/window.c src/error.c)
+add_executable(${PROJECT_NAME} src/main.c src/vulkan.c src/window.c src/error.c ${FLEX_SCANNER_OUTPUTS})
 set_property(TARGET ${PROJECT_NAME} PROPERTY C_STANDARD 23)
-target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw m)
+target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw m ${FLEX_LIBRARIES})
 target_compile_definitions(${PROJECT_NAME} PUBLIC CGLM_DEFINE_PRINTS=1)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR/src})
 
 add_custom_command(
   OUTPUT  vert.spv
@@ -38,6 +42,6 @@ add_custom_command(
 
 add_custom_target(Compile_Shaders DEPENDS vert.spv frag.spv)
 
-# configure_file(vk_layer_settings.txt ${CMAKE_CURRENT_BINARY_DIR}/ COPYONLY)
-configure_file(vk_layer_settings.txt . COPYONLY)
-configure_file(textures/texture.jpg textures/texture.jpg COPYONLY)
+configure_file(vk_layer_settings.txt .                    COPYONLY)
+configure_file(textures/texture.jpg  textures/texture.jpg COPYONLY)
+configure_file(src/vk.h              vk.h                 COPYONLY)
