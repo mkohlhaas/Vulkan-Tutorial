@@ -9,6 +9,7 @@ FLOAT   (([-+]?[0-9]+"."[0-9]*{EXP}?)|({INTEGER}))
 %{
 #include <stdbool.h>
 #include <glib.h>
+#include <cglm/cglm.h>
 #include "vk.h"
 
 typedef struct {
@@ -24,9 +25,22 @@ typedef struct {
 
 GArray *objVertices;
 GArray *faces;
+int numIndices;
 
-GArray *vertices;
-GArray *indices;
+// GArray *vertices;
+// GArray *indices;
+
+Vertex *vertices;
+uint32_t *indices;
+
+// const Vertex vertices[] = {{{-1.25f, -1.25f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},  {{+1.25f, -1.25f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+//                            {{+1.25f, +1.25f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},  {{-1.25f, +1.25f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+//                            {{-1.25f, -1.25f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}}, {{+1.25f, -1.25f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f,
+//                            0.0f}},
+//                            {{+1.25f, +1.25f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}, {{-1.25f, +1.25f, -0.5f}, {1.0f, 1.0f, 1.0f},
+//                            {1.0f, 1.0f}}};
+
+// const uint16_t indices[] = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
 
 void addVertex(char* f);
 void addFace(char* i);
@@ -65,7 +79,7 @@ void addFace(char* i) {
   GList *indices = NULL;
   while (*parts1) {
     gchar **parts2 = g_regex_split_simple("/", *parts1, G_REGEX_DEFAULT, G_REGEX_MATCH_DEFAULT);
-    float index = atoi(*parts2);
+    int index = atoi(*parts2);
     indices = g_list_append(indices, GINT_TO_POINTER(index));
     parts1++;
   }
@@ -77,7 +91,7 @@ void addFace(char* i) {
 void printVertices() {
   for(int i = 0; i < objVertices->len; i++) {
    vertex *v = &g_array_index(objVertices, vertex, i);
-   printf("Vertex #%d: %f, %f, %f\n", i, v->x, v->y, v->z);
+   printf("Vertex #%d: %f, %f, %f\n", i + 1, v->x, v->y, v->z);
   }
 }
 
@@ -94,7 +108,54 @@ void printFaces() {
   }
 }
 
-int loadModel(void) {
+void createVertices() {
+  vertices = malloc(objVertices->len * sizeof(Vertex));
+  Vertex *verticesCpy = vertices;
+  for(int i = 0; i < objVertices->len; i++) {
+   vertex *v = &g_array_index(objVertices, vertex, i);
+   verticesCpy[i].pos[0]   = v->x;
+   verticesCpy[i].pos[1]   = v->y;
+   verticesCpy[i].pos[2]   = v->z;
+   verticesCpy[i].color[0] = 1.0f;
+   verticesCpy[i].color[1] = 0.0f;
+   verticesCpy[i].color[2] = 0.0f;
+   // texture coordinates are not used
+   // …
+  }
+}
+
+int countIndices() {
+  unsigned int sum = 0;
+  for(int i = 0; i < faces->len; i++) {
+    face f = g_array_index(faces, face, i);
+    printf("\nFace #%d: ", i);
+    GList* l = f.loi;
+    sum += g_list_length (l);
+  }
+  printf("Number of indices: %d", sum);
+  return sum;
+}
+
+void createIndices() {
+  numIndices = countIndices();
+  indices = malloc(numIndices * sizeof(uint32_t));
+  for(int i = 0, j = 0; i < faces->len; i++) {
+    face f = g_array_index(faces, face, i);
+    printf("Face #%d: ", i);
+    GList* l = f.loi;
+    while(l) {
+      indices[j++] = (uint32_t) GPOINTER_TO_INT(l->data) - 1;
+      l = l->next;
+    }
+    printf("\n");
+  }
+}
+
+void loadModel(void) {
+  yyin = fopen("models/dodecahedron.obj", "r");
+  if(!yyin) {
+    perror("couldn't open file");
+  }
   objVertices = g_array_new(FALSE, FALSE, sizeof(vertex));
   faces       = g_array_new(FALSE, FALSE, sizeof(face));;
   yylex();

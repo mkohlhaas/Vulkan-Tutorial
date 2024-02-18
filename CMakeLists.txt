@@ -7,7 +7,7 @@ find_package(glfw3     REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(FLEX      REQUIRED)
 
-FLEX_TARGET(SCANNER lexer.l ${CMAKE_CURRENT_BINARY_DIR}/lexer.c)
+FLEX_TARGET(SCANNER src/lexer.l ${CMAKE_CURRENT_BINARY_DIR}/lexer.c)
 
 # Glib2
 pkg_check_modules(GLIB2 REQUIRED glib-2.0)
@@ -42,6 +42,11 @@ add_custom_command(
 
 add_custom_target(Compile_Shaders DEPENDS vert.spv frag.spv)
 
-configure_file(vk_layer_settings.txt .                    COPYONLY)
-configure_file(textures/texture.jpg  textures/texture.jpg COPYONLY)
-configure_file(src/vk.h              vk.h                 COPYONLY)
+configure_file(vk_layer_settings.txt   .                       COPYONLY)
+configure_file(textures/texture.jpg    textures/texture.jpg    COPYONLY)
+configure_file(models/cube.obj         models/cube.obj         COPYONLY)
+configure_file(models/dodecahedron.obj models/dodecahedron.obj COPYONLY)
+configure_file(models/rectangle.obj    models/rectangle.obj    COPYONLY)
+configure_file(models/tetrahedron.obj  models/tetrahedron.obj  COPYONLY)
+configure_file(models/teapot.obj       models/teapot.obj       COPYONLY)
+configure_file(src/vk.h                vk.h                    COPYONLY)

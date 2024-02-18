@@ -256,8 +256,12 @@ void CreateDescriptorSets() {
 
 // const uint16_t indices[] = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
 
-extern GArray *vertices;
-extern GArray *indices;
+extern GArray *objVertices;
+extern GArray *faces;
+extern int numIndices;
+
+extern Vertex *vertices;
+extern uint32_t *indices;
 
 static VkVertexInputAttributeDescription *getAttributeDescriptions() {
   VkVertexInputAttributeDescription tmpDesc[] = {{
@@ -297,7 +301,7 @@ static VkVertexInputBindingDescription *getBindingDescription() {
 }
 
 void CreateVertexBuffer() {
-  VkDeviceSize bufferSize = vertices->len;
+  VkDeviceSize bufferSize = objVertices->len * sizeof(Vertex);
   int usageFlags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
   int memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
@@ -307,13 +311,38 @@ void CreateVertexBuffer() {
 
   void *data;
   vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-  memcpy(data, vertices->data, bufferSize);
+  memcpy(data, vertices, bufferSize);
   vkUnmapMemory(device, stagingBufferMemory);
 
   usageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
   memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
   CreateBuffer(bufferSize, usageFlags, memoryProperties, &vertexBuffer, &vertexBufferMemory);
   CopyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+
+  vkDestroyBuffer(device, stagingBuffer, NULL);
+  vkFreeMemory(device, stagingBufferMemory, NULL);
+}
+
+void CreateIndexBuffer() {
+  VkDeviceSize bufferSize = numIndices * sizeof(uint32_t);
+
+  int usageFlags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+  int memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+  VkBuffer stagingBuffer;
+  VkDeviceMemory stagingBufferMemory;
+  CreateBuffer(bufferSize, usageFlags, memoryProperties, &stagingBuffer, &stagingBufferMemory);
+
+  void *data;
+  vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+  memcpy(data, indices, bufferSize);
+  vkUnmapMemory(device, stagingBufferMemory);
+
+  usageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+  memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+  CreateBuffer(bufferSize, usageFlags, memoryProperties, &indexBuffer, &indexBufferMemory);
+
+  CopyBuffer(stagingBuffer, indexBuffer, bufferSize);
 
   vkDestroyBuffer(device, stagingBuffer, NULL);
   vkFreeMemory(device, stagingBufferMemory, NULL);
@@ -1474,10 +1503,10 @@ void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
   VkBuffer vertexBuffers[] = {vertexBuffer};
   VkDeviceSize offsets[] = {0};
   vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-  vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+  vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, NULL);
 
-  vkCmdDrawIndexed(commandBuffer, indices->len / sizeof(int), 1, 0, 0, 0);
+  vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
 
   vkCmdEndRenderPass(commandBuffer);
 
@@ -1854,31 +1883,6 @@ void cleanup() {
   glfwTerminate();
 }
 
-void CreateIndexBuffer() {
-  VkDeviceSize bufferSize = indices->len;
-
-  int usageFlags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-  int memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-
-  VkBuffer stagingBuffer;
-  VkDeviceMemory stagingBufferMemory;
-  CreateBuffer(bufferSize, usageFlags, memoryProperties, &stagingBuffer, &stagingBufferMemory);
-
-  void *data;
-  vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-  memcpy(data, indices->data, bufferSize);
-  vkUnmapMemory(device, stagingBufferMemory);
-
-  usageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-  memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-  CreateBuffer(bufferSize, usageFlags, memoryProperties, &indexBuffer, &indexBufferMemory);
-
-  CopyBuffer(stagingBuffer, indexBuffer, bufferSize);
-
-  vkDestroyBuffer(device, stagingBuffer, NULL);
-  vkFreeMemory(device, stagingBufferMemory, NULL);
-}
-
 bool hasStencilComponent(VkFormat format) { return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT; }
 
 void initVulkan() {
@@ -1900,6 +1904,7 @@ void initVulkan() {
   CreateTextureImage();
   CreateTextureImageView();
   CreateTextureSampler();
+  loadModel();
   CreateVertexBuffer();
   CreateIndexBuffer();
   CreateUniformBuffers();
