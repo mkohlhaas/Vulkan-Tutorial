@@ -1462,6 +1462,7 @@ void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
   err = vkBeginCommandBuffer(commandBuffer, &beginInfo);
   handleError();
 
+  // see 'VkAttachmentDescription attachments'
   VkClearValue clearValues[] = {
       {.color = {{0.0f, 0.0f, 0.0f, 1.0f}}},
       {.depthStencil = {1.0f, 0}},
@@ -1473,7 +1474,7 @@ void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
       .framebuffer = swapChainFramebuffers[imageIndex],
       .renderArea.offset = {0, 0},
       .renderArea.extent = swapChainExtent,
-      .clearValueCount = 2,
+      .clearValueCount = sizeof(clearValues) / sizeof(VkClearValue),
       .pClearValues = clearValues,
   };
 
@@ -1556,7 +1557,7 @@ void RecreateSwapChain() {
   // int width;
   // int height;
   // glfwGetFramebufferSize(window, &width, &height);
-  vkDeviceWaitIdle(device);
+  DeviceWaitIdle();
   CleanupSwapChain();
   CreateSwapChain();
   CreateImageViews();

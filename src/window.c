@@ -41,7 +41,6 @@ void initWindow() {
 }
 
 void mainloop() {
-  // loop until ESC key is pressed
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
     drawFrame();
