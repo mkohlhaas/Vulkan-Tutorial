@@ -1,8 +1,9 @@
 #include "vkTutorial.h"
 
 int main(void) {
-  initWindow();
+  initGLFW();
   initVulkan();
   mainloop();
-  cleanup();
+  cleanupVulkan();
+  cleanupGLFW();
 }

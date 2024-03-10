@@ -151,7 +151,7 @@ void createIndices() {
   }
 }
 
-void loadModel(void) {
+void LoadModel(void) {
   yyin = fopen("models/dodecahedron.obj", "r");
   if(!yyin) {
     perror("couldn't open file");

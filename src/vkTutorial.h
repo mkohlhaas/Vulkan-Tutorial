@@ -13,13 +13,18 @@
 #define VKT_ERROR_NO_TEXTURE_FILE -20
 #define VKT_ERROR_UNSUPPORTED_LAYOUT_TRANSITION -21
 #define VKT_ERROR_FORMAT_NOT_AVAILABLE -22
+#define VKT_ERROR_NO_VERT_SHADER -23
+#define VKT_ERROR_NO_FRAG_SHADER -24
 
 #define handleError(x) _handleError(__FILE__, __LINE__)
 
-void initWindow();
+void initGLFW();
 void initVulkan();
 void mainloop();
-void cleanup();
+void cleanupGLFW();
+void cleanupVulkan();
+void CreateSurface();
+const char **getRequiredExtensions(uint32_t *);
 GLFWwindow *getWindow();
 void _handleError(const char *, int);
 bool checkValidationLayerSupport();

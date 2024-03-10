@@ -179,6 +179,12 @@ void _handleError(const char *fileName, int lineNumber) {
     case VKT_ERROR_FORMAT_NOT_AVAILABLE:
       fprintf(stderr, "Error: failed to find supported format\n");
       break;
+    case VKT_ERROR_NO_VERT_SHADER:
+      fprintf(stderr, "Error: failed to load vertex shader\n");
+      break;
+    case VKT_ERROR_NO_FRAG_SHADER:
+      fprintf(stderr, "Error: failed to load fragment shader\n");
+      break;
     };
     fprintf(stderr, "in file %s, line %d, error code %d\n", fileName, lineNumber, err);
     exit(EXIT_FAILURE);

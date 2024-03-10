@@ -1,6 +1,6 @@
 #include <cglm/cglm.h>
 
-void loadModel(void);
+void LoadModel(void);
 
 typedef struct {
   vec3 pos;
