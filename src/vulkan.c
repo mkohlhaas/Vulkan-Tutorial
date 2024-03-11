@@ -284,12 +284,10 @@ VkVertexInputAttributeDescription *GetAttributeDescriptions(int *numDescriptions
   return attributeDescriptions;
 }
 
-void CreateVertexBuffer() {
-  VkDeviceSize bufferSize = objVertices->len * sizeof(Vertex);
+static void createBuffer(VkBuffer *buffer, VkDeviceMemory *bufferMemory, VkDeviceSize bufferSize, int flags, void *input) {
+  // create staging buffer
   int usageFlags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
   int memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-
-  // create staging buffer
   VkBuffer stagingBuffer;
   VkDeviceMemory stagingBufferMemory;
   CreateBuffer(bufferSize, usageFlags, memoryProperties, &stagingBuffer, &stagingBufferMemory);
@@ -298,52 +296,30 @@ void CreateVertexBuffer() {
   void *data;
   err = vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
   handleError();
-  memcpy(data, vertices, bufferSize);
+  memcpy(data, input, bufferSize);
   vkUnmapMemory(device, stagingBufferMemory);
 
-  // create vertex buffer
-  usageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+  // create buffer
+  usageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags;
   memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-  CreateBuffer(bufferSize, usageFlags, memoryProperties, &vertexBuffer, &vertexBufferMemory);
+  CreateBuffer(bufferSize, usageFlags, memoryProperties, buffer, bufferMemory);
 
   // copy from staging buffer to vertex buffer
-  CopyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+  CopyBuffer(stagingBuffer, *buffer, bufferSize);
 
   // cleanup staging buffer
   vkDestroyBuffer(device, stagingBuffer, nullptr);
   vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
-// TODO: same function as 'CreateVertexBuffer(…)'
-// bufferSize
-// indices | vertices
-// VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
-// indexBufferMemory | vertexBufferMemory
-// indexBuffer | vertexBuffer
+void CreateVertexBuffer() {
+  VkDeviceSize bufferSize = objVertices->len * sizeof(Vertex);
+  createBuffer(&vertexBuffer, &vertexBufferMemory, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices);
+}
+
 void CreateIndexBuffer() {
   VkDeviceSize bufferSize = numIndices * sizeof(uint32_t);
-
-  int usageFlags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-  int memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-
-  VkBuffer stagingBuffer;
-  VkDeviceMemory stagingBufferMemory;
-  CreateBuffer(bufferSize, usageFlags, memoryProperties, &stagingBuffer, &stagingBufferMemory);
-
-  void *data;
-  err = vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-  handleError();
-  memcpy(data, indices, bufferSize);
-  vkUnmapMemory(device, stagingBufferMemory);
-
-  usageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-  memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-  CreateBuffer(bufferSize, usageFlags, memoryProperties, &indexBuffer, &indexBufferMemory);
-
-  CopyBuffer(stagingBuffer, indexBuffer, bufferSize);
-
-  vkDestroyBuffer(device, stagingBuffer, nullptr);
-  vkFreeMemory(device, stagingBufferMemory, nullptr);
+  createBuffer(&indexBuffer, &indexBufferMemory, bufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indices);
 }
 
 VKAPI_PTR VkBool32 debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes,
@@ -1507,9 +1483,7 @@ void RecordCommandBuffer(VkCommandBuffer cmdBuffer, uint32_t imageIndex) {
   vkCmdBindVertexBuffers(cmdBuffer, 0, 1, vertexBuffers, offsets);
   vkCmdBindIndexBuffer(cmdBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
   vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
-
   vkCmdDrawIndexed(cmdBuffer, numIndices, 1, 0, 0, 0);
-
   vkCmdEndRenderPass(cmdBuffer);
 
   err = vkEndCommandBuffer(cmdBuffer);
