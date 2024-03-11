@@ -119,7 +119,8 @@ void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyF
   err = vkAllocateMemory(device, &allocInfo, nullptr, bufferMemory);
   handleError();
 
-  vkBindBufferMemory(device, *buffer, *bufferMemory, 0);
+  err = vkBindBufferMemory(device, *buffer, *bufferMemory, 0);
+  handleError();
 }
 
 void CreateUniformBuffers() {
@@ -128,7 +129,8 @@ void CreateUniformBuffers() {
   int memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     CreateBuffer(bufferSize, bufferUsageFlags, memoryProperties, &uniformBuffers[i], &uniformBuffersMemory[i]);
-    vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+    err = vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+    handleError();
   }
 }
 
@@ -294,7 +296,8 @@ void CreateVertexBuffer() {
 
   // fill staging buffer
   void *data;
-  vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+  err = vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+  handleError();
   memcpy(data, vertices, bufferSize);
   vkUnmapMemory(device, stagingBufferMemory);
 
@@ -328,7 +331,8 @@ void CreateIndexBuffer() {
   CreateBuffer(bufferSize, usageFlags, memoryProperties, &stagingBuffer, &stagingBufferMemory);
 
   void *data;
-  vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+  err = vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+  handleError();
   memcpy(data, indices, bufferSize);
   vkUnmapMemory(device, stagingBufferMemory);
 
@@ -914,9 +918,11 @@ bool isPhysicalDeviceSuitable(VkPhysicalDevice physicalDevice) {
 
   // get device extensions
   uint32_t extensionCount;
-  vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
+  err = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
+  handleError();
   VkExtensionProperties availableDeviceExtensions[extensionCount];
-  vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, availableDeviceExtensions);
+  err = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, availableDeviceExtensions);
+  handleError();
 
   // print available device extensions
   fprintf(stderr, "  Available extensions:\n");
@@ -1024,7 +1030,8 @@ void PrintQueueFamilies() {
 void PickPhysicalDevice() {
   // get number of physical devices
   uint32_t physicalDeviceCount;
-  vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
+  err = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
+  handleError();
 
   // bail out if no physical device available
   if (!physicalDeviceCount) {
@@ -1247,7 +1254,7 @@ void CreateRenderPass() {
       .pDependencies = &dependency,
   };
 
-  vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass);
+  err = vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass);
   handleError();
 }
 
@@ -1652,7 +1659,7 @@ void drawFrame() {
   err = vkQueuePresentKHR(graphicsQueue, &presentInfo);
   if (err == VK_ERROR_OUT_OF_DATE_KHR || err == VK_SUBOPTIMAL_KHR) {
     RecreateSwapChain();
-  } else {
+  } else if (err) {
     handleError();
   }
   currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
@@ -1669,20 +1676,23 @@ VkCommandBuffer beginSingleTimeCommands() {
   };
 
   VkCommandBuffer cmdBuffer;
-  vkAllocateCommandBuffers(device, &cmdBufferInfo, &cmdBuffer);
+  err = vkAllocateCommandBuffers(device, &cmdBufferInfo, &cmdBuffer);
+  handleError();
 
   VkCommandBufferBeginInfo cmdBufferBeginInfo = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
       .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
   };
 
-  vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo);
+  err = vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo);
+  handleError();
 
   return cmdBuffer;
 }
 
 void endSingleTimeCommands(VkCommandBuffer cmdBuffer) {
-  vkEndCommandBuffer(cmdBuffer);
+  err = vkEndCommandBuffer(cmdBuffer);
+  handleError();
 
   VkSubmitInfo submitInfo = {
       .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -1691,8 +1701,10 @@ void endSingleTimeCommands(VkCommandBuffer cmdBuffer) {
   };
 
   // every graphics queue is able to transfer data (in the Vulkan specification)
-  vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-  vkQueueWaitIdle(graphicsQueue);
+  err = vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+  handleError();
+  err = vkQueueWaitIdle(graphicsQueue);
+  handleError();
 
   vkFreeCommandBuffers(device, cmdPool, 1, &cmdBuffer);
 }
@@ -1791,7 +1803,8 @@ void CreateTextureImage() {
 
   // transfer image to mapped staging area
   void *data;
-  vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+  err = vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+  handleError();
   memcpy(data, pixels, imageSize);
   vkUnmapMemory(device, stagingBufferMemory);
 
