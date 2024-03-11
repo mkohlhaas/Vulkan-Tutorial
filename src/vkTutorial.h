@@ -15,8 +15,18 @@
 #define VKT_ERROR_FORMAT_NOT_AVAILABLE -22
 #define VKT_ERROR_NO_VERT_SHADER -23
 #define VKT_ERROR_NO_FRAG_SHADER -24
+#define VKT_ERROR_NO_VALIDATION_LAYER -25
 
 #define handleError(x) _handleError(__FILE__, __LINE__)
+
+#ifdef NDEBUG
+#define debugPrint(fmt, ...)
+#else
+#define debugPrint(fmt, ...)                                                                                                                         \
+  do {                                                                                                                                               \
+    fprintf(stderr, fmt, ##__VA_ARGS__);                                                                                                             \
+  } while (0)
+#endif
 
 void initGLFW();
 void initVulkan();
@@ -28,7 +38,7 @@ const char **getRequiredExtensions(uint32_t *);
 GLFWwindow *getWindow();
 void _handleError(const char *, int);
 bool checkValidationLayerSupport();
-void destroyDebugUtilsMessenger(VkInstance, VkDebugUtilsMessengerEXT, const VkAllocationCallbacks *);
+void DestroyDebugUtilsMessenger(VkInstance, VkDebugUtilsMessengerEXT, const VkAllocationCallbacks *);
 void drawFrame();
 void DeviceWaitIdle();
 void CopyBuffer(VkBuffer, VkBuffer, VkDeviceSize);

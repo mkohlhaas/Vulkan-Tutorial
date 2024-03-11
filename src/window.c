@@ -6,6 +6,7 @@
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
+extern const bool enableValidationLayers;
 extern VkResult err;
 extern VkInstance instance;
 extern VkSurfaceKHR surface;
@@ -13,7 +14,7 @@ extern VkSurfaceKHR surface;
 GLFWwindow *window;
 
 // print error messages
-static void error_callback(int error, const char *description) { fprintf(stderr, "GLFW error: %s\nError Code: %d\n", description, error); }
+static void error_callback(int error, const char *description) { debugPrint("GLFW error: %s\nError Code: %d\n", description, error); }
 
 // pressing ESC or Q key closes window
 static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
@@ -50,14 +51,18 @@ const char **getRequiredExtensions(uint32_t *requiredExtensionsCount) {
   glfwExtensions = glfwGetRequiredInstanceExtensions(requiredExtensionsCount);
 
   // print GLFW extensions
-  printf("GLFW:\n");
-  printf("  Extensions:\n");
+  debugPrint("GLFW:\n");
+  debugPrint("  Extensions:\n");
   for (int i = 0; i < *requiredExtensionsCount; i++) {
-    printf("    %s\n", glfwExtensions[i]);
+    debugPrint("    %s\n", glfwExtensions[i]);
   }
 
   // setup required extensions (make space for VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
-  const char **requiredExtensions = malloc((*requiredExtensionsCount + 1) * sizeof(char *));
+  uint32_t addSize = 0;
+  if (enableValidationLayers) {
+    addSize++;
+  };
+  const char **requiredExtensions = malloc((*requiredExtensionsCount + addSize) * sizeof(char *));
 
   // copy GLFW extensions into required extensions
   for (int i = 0; i < *requiredExtensionsCount; i++) {
@@ -65,10 +70,10 @@ const char **getRequiredExtensions(uint32_t *requiredExtensionsCount) {
   }
 
   // add debug extension as last element
-  requiredExtensions[*requiredExtensionsCount] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
-
-  // update number of required extensions (for VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
-  (*requiredExtensionsCount)++;
+  if (enableValidationLayers) {
+    requiredExtensions[*requiredExtensionsCount] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+    (*requiredExtensionsCount)++;
+  }
 
   return requiredExtensions;
 }

@@ -185,7 +185,11 @@ void _handleError(const char *fileName, int lineNumber) {
     case VKT_ERROR_NO_FRAG_SHADER:
       fprintf(stderr, "Error: failed to load fragment shader\n");
       break;
+    case VKT_ERROR_NO_VALIDATION_LAYER:
+      fprintf(stderr, "Error: validation layer not available\n");
+      break;
     };
+
     fprintf(stderr, "in file %s, line %d, error code %d\n", fileName, lineNumber, err);
     exit(EXIT_FAILURE);
   };

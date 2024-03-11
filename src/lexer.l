@@ -96,6 +96,7 @@ void printVertices() {
 }
 
 void printFaces() {
+  printf("\n");
   for(int i = 0; i < faces->len; i++) {
     face f = g_array_index(faces, face, i);
     printf("Face #%d: ", i);
@@ -128,11 +129,10 @@ int countIndices() {
   unsigned int sum = 0;
   for(int i = 0; i < faces->len; i++) {
     face f = g_array_index(faces, face, i);
-    printf("\nFace #%d: ", i);
     GList* l = f.loi;
     sum += g_list_length (l);
   }
-  printf("Number of indices: %d", sum);
+  printf("\nNumber of indices: %d\n", sum);
   return sum;
 }
 
@@ -141,13 +141,11 @@ void createIndices() {
   indices = malloc(numIndices * sizeof(uint32_t));
   for(int i = 0, j = 0; i < faces->len; i++) {
     face f = g_array_index(faces, face, i);
-    printf("Face #%d: ", i);
     GList* l = f.loi;
     while(l) {
       indices[j++] = (uint32_t) GPOINTER_TO_INT(l->data) - 1;
       l = l->next;
     }
-    printf("\n");
   }
 }
 
