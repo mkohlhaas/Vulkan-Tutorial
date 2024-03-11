@@ -19,7 +19,6 @@ const char *TEXTURE_PATH = "textures/viking_room.png";
 #include <glib.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <vulkan/vulkan_core.h>
@@ -114,8 +113,14 @@ void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyF
   VkMemoryRequirements memRequirements;
   vkGetBufferMemoryRequirements(device, *buffer, &memRequirements);
 
+  VkMemoryPriorityAllocateInfoEXT allocInfoExt = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT,
+      .priority = 1.0f,
+  };
+
   VkMemoryAllocateInfo allocInfo = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+      .pNext = &allocInfoExt,
       .allocationSize = memRequirements.size,
       .memoryTypeIndex = FindMemoryTypeIndex(memRequirements.memoryTypeBits, properties),
   };
@@ -328,12 +333,13 @@ void CreateIndexBuffer() {
 
 VKAPI_PTR VkBool32 debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes,
                                  const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData) {
-  debugPrint("Validation Layer: %s (%s)\n", pCallbackData->pMessage,
-          messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT   ? "Severity: Verbose"
-          : messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT    ? "Severity: Info"
-          : messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ? "Severity: Warning"
-          : messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT   ? "Severity: Error"
-                                                                               : "Severity: Unknown");
+  debugPrint("Validation Layer %s: %s \n",
+             messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT   ? "Verbose"
+             : messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT    ? "Info"
+             : messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ? "Warning"
+             : messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT   ? "Error"
+                                                                                  : "Unknown",
+             pCallbackData->pMessage);
   return VK_FALSE;
 }
 
@@ -347,9 +353,11 @@ VkResult createDebugMessenger(VkInstance instance, const VkDebugUtilsMessengerCr
   }
 }
 void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT *createInfo) {
+  createInfo->pNext = nullptr;
+  createInfo->flags = 0;
   createInfo->sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-  createInfo->messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                                VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+  createInfo->messageSeverity =
+      VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
   createInfo->messageType =
       VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
   createInfo->pfnUserCallback = debugCallback;
@@ -394,7 +402,7 @@ bool CheckValidationLayerSupport() {
     uint32_t implMinor = VK_VERSION_MINOR(implVersion);
     uint32_t implPatch = VK_VERSION_PATCH(implVersion);
     debugPrint("    %2d: %s (%s: specification version: %u.%u.%u, implementation version: %u.%u.%u)\n", i + 1, desc, name, specMajor, specMinor,
-           specPatch, implMajor, implMinor, implPatch);
+               specPatch, implMajor, implMinor, implPatch);
   }
 
   // print required layers
@@ -1162,9 +1170,15 @@ void CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling
   VkMemoryRequirements memRequirements;
   vkGetImageMemoryRequirements(device, *image, &memRequirements);
 
+  VkMemoryPriorityAllocateInfoEXT allocInfoExt = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT,
+      .priority = 1.0f,
+  };
+
   VkMemoryAllocateInfo allocInfo = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
       .allocationSize = memRequirements.size,
+      .pNext = &allocInfoExt,
       .memoryTypeIndex = FindMemoryTypeIndex(memRequirements.memoryTypeBits, properties),
   };
 
@@ -1269,7 +1283,7 @@ VkShaderModule createShaderModule(gchar *code, gsize codeSize) {
 
 gboolean readFile(const char *filename, gchar **contents, gsize *len) { return g_file_get_contents(filename, contents, len, nullptr); }
 
-void CreateGraphicsPipeline() {
+void CreatePipeline() {
   // Shaders
   gchar *vertShaderCode;
   gchar *fragShaderCode;
@@ -1327,6 +1341,8 @@ void CreateGraphicsPipeline() {
   // Viewport and scissors will be dynamic.
   VkPipelineViewportStateCreateInfo viewportState = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+      .viewportCount = 1,
+      .scissorCount = 1,
   };
 
   VkPipelineRasterizationStateCreateInfo rasterizer = {
@@ -1426,6 +1442,7 @@ void CreateCommandPool() {
   VkCommandPoolCreateInfo poolInfo = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
       .queueFamilyIndex = fstGraphicsQueueFamilyIndex(),
+      .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
   };
 
   err = vkCreateCommandPool(device, &poolInfo, nullptr, &cmdPool);
@@ -1835,12 +1852,14 @@ void CreateTextureSampler() {
       .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
       .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
       .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-      .anisotropyEnable = VK_TRUE,
+      .anisotropyEnable = VK_FALSE,
       .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
       .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
       .unnormalizedCoordinates = VK_FALSE,
       .compareOp = VK_COMPARE_OP_ALWAYS,
       .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+      .minLod = 0.0f,
+      .maxLod = VK_LOD_CLAMP_NONE,
   };
 
   err = vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler);
@@ -1905,7 +1924,7 @@ void initVulkan() {
   CreateDepthResources();
   CreateFramebuffers();
   CreateDescriptorSetLayout();
-  CreateGraphicsPipeline();
+  CreatePipeline();
   CreateCommandPool();
   CreateTextureImage();
   CreateTextureImageView();
