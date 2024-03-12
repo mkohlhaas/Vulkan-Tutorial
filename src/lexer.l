@@ -101,17 +101,11 @@ void printFaces() {
 
 void createVertices() {
   vertices = malloc(objVertices->len * sizeof(Vertex));
-  Vertex *verticesCpy = vertices;
   for(int i = 0; i < objVertices->len; i++) {
    vertex *v = &g_array_index(objVertices, vertex, i);
-   verticesCpy[i].pos[0]   = v->x;
-   verticesCpy[i].pos[1]   = v->y;
-   verticesCpy[i].pos[2]   = v->z;
-   verticesCpy[i].color[0] = 1.0f;
-   verticesCpy[i].color[1] = 0.0f;
-   verticesCpy[i].color[2] = 0.0f;
-   // texture coordinates are not used
-   // …
+   vertices[i].pos[0]   = v->x;
+   vertices[i].pos[1]   = v->y;
+   vertices[i].pos[2]   = v->z;
   }
 }
 
@@ -150,6 +144,7 @@ void LoadModel(void) {
   fclose(yyin);
   createVertices();
   createIndices();
+  // createNormals();
   numVertices = objVertices->len;
 #ifndef NDEBUG
   printVertices();

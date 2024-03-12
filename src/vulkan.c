@@ -254,12 +254,6 @@ VkVertexInputAttributeDescription *GetAttributeDescriptions(int *numDescriptions
           .format = VK_FORMAT_R32G32B32_SFLOAT,
           .offset = offsetof(Vertex, pos),
       },
-      {
-          .binding = 0,
-          .location = 1,
-          .format = VK_FORMAT_R32G32B32_SFLOAT,
-          .offset = offsetof(Vertex, color),
-      },
   };
   int tmpDescSize = sizeof(tmpDesc);
   VkVertexInputAttributeDescription *attributeDescriptions = malloc(tmpDescSize);
