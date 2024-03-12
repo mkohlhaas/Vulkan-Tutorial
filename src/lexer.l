@@ -11,6 +11,7 @@ FLOAT   (([-+]?[0-9]+"."[0-9]*{EXP}?)|({INTEGER}))
 #include <glib.h>
 #include <cglm/cglm.h>
 #include "vk.h"
+#include "vkTutorial.h"
 
 typedef struct {
   float x;
@@ -24,23 +25,12 @@ typedef struct {
 } face;
 
 GArray *objVertices;
+int numVertices;
 GArray *faces;
 int numIndices;
 
-// GArray *vertices;
-// GArray *indices;
-
 Vertex *vertices;
 uint32_t *indices;
-
-// const Vertex vertices[] = {{{-1.25f, -1.25f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},  {{+1.25f, -1.25f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-//                            {{+1.25f, +1.25f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},  {{-1.25f, +1.25f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-//                            {{-1.25f, -1.25f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}}, {{+1.25f, -1.25f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f,
-//                            0.0f}},
-//                            {{+1.25f, +1.25f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}, {{-1.25f, +1.25f, -0.5f}, {1.0f, 1.0f, 1.0f},
-//                            {1.0f, 1.0f}}};
-
-// const uint16_t indices[] = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
 
 void addVertex(char* f);
 void addFace(char* i);
@@ -132,7 +122,6 @@ int countIndices() {
     GList* l = f.loi;
     sum += g_list_length (l);
   }
-  printf("\nNumber of indices: %d\n", sum);
   return sum;
 }
 
@@ -150,15 +139,22 @@ void createIndices() {
 }
 
 void LoadModel(void) {
-  yyin = fopen("models/dodecahedron.obj", "r");
+  yyin = fopen("models/cube.obj", "r");
   if(!yyin) {
-    perror("couldn't open file");
+    perror("Couldn't open obj file");
+    exit(EXIT_FAILURE);
   }
   objVertices = g_array_new(FALSE, FALSE, sizeof(vertex));
   faces       = g_array_new(FALSE, FALSE, sizeof(face));;
   yylex();
-  printVertices();
-  printFaces();
+  fclose(yyin);
   createVertices();
   createIndices();
+  numVertices = objVertices->len;
+#ifndef NDEBUG
+  printVertices();
+  printFaces();
+  printf("Number of vertices: %d\n", numVertices);
+  printf("Number of indices: %d\n", numIndices);
+#endif
 }

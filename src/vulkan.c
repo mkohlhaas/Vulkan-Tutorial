@@ -7,9 +7,6 @@ const bool enableValidationLayers = false;
 const bool enableValidationLayers = true;
 #endif
 
-const char *MODEL_PATH = "models/viking_room.obj";
-const char *TEXTURE_PATH = "textures/viking_room.png";
-
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "vk.h"
@@ -66,10 +63,6 @@ void *uniformBuffersMapped[MAX_FRAMES_IN_FLIGHT];
 VkDescriptorSetLayout descriptorSetLayout;
 VkDescriptorPool descriptorPool;
 VkDescriptorSet descriptorSets[MAX_FRAMES_IN_FLIGHT];
-VkImage textureImage;
-VkDeviceMemory textureImageMemory;
-VkImageView textureImageView;
-VkSampler textureSampler;
 // trifecta of resources: image, memory and image view
 VkImage depthImage;
 VkDeviceMemory depthImageMemory;
@@ -209,30 +202,17 @@ void CreateDescriptorSets() {
         .range = sizeof(UniformBufferObject),
     };
 
-    VkDescriptorImageInfo imageInfo = {
-        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        .imageView = textureImageView,
-        .sampler = textureSampler,
+    VkWriteDescriptorSet descriptorWrites[] = {
+        {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = descriptorSets[i],
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .descriptorCount = 1,
+            .pBufferInfo = &bufferInfo,
+        },
     };
-
-    VkWriteDescriptorSet descriptorWrites[] = {{
-                                                   .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                                   .dstSet = descriptorSets[i],
-                                                   .dstBinding = 0,
-                                                   .dstArrayElement = 0,
-                                                   .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                                   .descriptorCount = 1,
-                                                   .pBufferInfo = &bufferInfo,
-                                               },
-                                               {
-                                                   .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                                   .dstSet = descriptorSets[i],
-                                                   .dstBinding = 1,
-                                                   .dstArrayElement = 0,
-                                                   .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                   .descriptorCount = 1,
-                                                   .pImageInfo = &imageInfo,
-                                               }};
 
     uint32_t descCount = sizeof(descriptorWrites) / sizeof(VkWriteDescriptorSet);
     vkUpdateDescriptorSets(device, descCount, descriptorWrites, 0, nullptr);
@@ -248,12 +228,11 @@ void CreateDescriptorSets() {
 
 // const uint16_t indices[] = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
 
-extern GArray *objVertices;
-extern GArray *faces;
-extern int numIndices;
-
+// set in src/lexer.l
 extern Vertex *vertices;
+extern int numVertices;
 extern uint32_t *indices;
+extern int numIndices;
 
 VkVertexInputBindingDescription *GetBindingDescriptions(int *numDescriptions) {
   VkVertexInputBindingDescription tmpDesc[] = {{
@@ -268,24 +247,20 @@ VkVertexInputBindingDescription *GetBindingDescriptions(int *numDescriptions) {
 }
 
 VkVertexInputAttributeDescription *GetAttributeDescriptions(int *numDescriptions) {
-  VkVertexInputAttributeDescription tmpDesc[] = {{
-                                                     .binding = 0,
-                                                     .location = 0,
-                                                     .format = VK_FORMAT_R32G32B32_SFLOAT,
-                                                     .offset = offsetof(Vertex, pos),
-                                                 },
-                                                 {
-                                                     .binding = 0,
-                                                     .location = 1,
-                                                     .format = VK_FORMAT_R32G32B32_SFLOAT,
-                                                     .offset = offsetof(Vertex, color),
-                                                 },
-                                                 {
-                                                     .binding = 0,
-                                                     .location = 2,
-                                                     .format = VK_FORMAT_R32G32_SFLOAT,
-                                                     .offset = offsetof(Vertex, texCoord),
-                                                 }};
+  VkVertexInputAttributeDescription tmpDesc[] = {
+      {
+          .binding = 0,
+          .location = 0,
+          .format = VK_FORMAT_R32G32B32_SFLOAT,
+          .offset = offsetof(Vertex, pos),
+      },
+      {
+          .binding = 0,
+          .location = 1,
+          .format = VK_FORMAT_R32G32B32_SFLOAT,
+          .offset = offsetof(Vertex, color),
+      },
+  };
   int tmpDescSize = sizeof(tmpDesc);
   VkVertexInputAttributeDescription *attributeDescriptions = malloc(tmpDescSize);
   memcpy(attributeDescriptions, tmpDesc, tmpDescSize);
@@ -322,7 +297,7 @@ static void createBuffer(VkBuffer *buffer, VkDeviceMemory *bufferMemory, VkDevic
 }
 
 void CreateVertexBuffer() {
-  VkDeviceSize bufferSize = objVertices->len * sizeof(Vertex);
+  VkDeviceSize bufferSize = numVertices * sizeof(Vertex);
   createBuffer(&vertexBuffer, &vertexBufferMemory, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices);
 }
 
@@ -1730,49 +1705,6 @@ void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
   endSingleTimeCommands(cmdBuffer);
 }
 
-void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
-  VkCommandBuffer cmdBuffer = beginSingleTimeCommands();
-
-  // image memory barrier (pipeline barrier)
-  VkImageMemoryBarrier barrier = {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-      .oldLayout = oldLayout,
-      .newLayout = newLayout,
-      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-      .image = image,
-      .subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-      .subresourceRange.baseMipLevel = 0,
-      .subresourceRange.levelCount = 1,
-      .subresourceRange.baseArrayLayer = 0,
-      .subresourceRange.layerCount = 1,
-  };
-
-  VkPipelineStageFlags sourceStage;
-  VkPipelineStageFlags destinationStage;
-
-  if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-    barrier.srcAccessMask = 0;
-    barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-    sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-  } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-    sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-  } else {
-    err = VKT_ERROR_UNSUPPORTED_LAYOUT_TRANSITION;
-    handleError();
-  }
-
-  vkCmdPipelineBarrier(cmdBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-  endSingleTimeCommands(cmdBuffer);
-}
-
 void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
   VkCommandBuffer cmdBuffer = beginSingleTimeCommands();
 
@@ -1791,79 +1723,6 @@ void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t 
   vkCmdCopyBufferToImage(cmdBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
   endSingleTimeCommands(cmdBuffer);
-}
-
-void CreateTextureImage() {
-  int texWidth, texHeight, texChannels;
-  stbi_uc *pixels = stbi_load("textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-  VkDeviceSize imageSize = texWidth * texHeight * 4;
-  debugPrint("image width: %d height: %d size: %lu\n", texWidth, texHeight, imageSize);
-
-  if (!pixels) {
-    err = VKT_ERROR_NO_TEXTURE_FILE;
-    handleError();
-  }
-
-  // staging area
-  VkBuffer stagingBuffer;
-  VkDeviceMemory stagingBufferMemory;
-  int bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-  int memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-  CreateBuffer(imageSize, bufferUsageFlags, memoryProperties, &stagingBuffer, &stagingBufferMemory);
-
-  // transfer image to mapped staging area
-  void *data;
-  err = vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-  handleError();
-  memcpy(data, pixels, imageSize);
-  vkUnmapMemory(device, stagingBufferMemory);
-
-  // create device local image (VkImage)
-  CreateImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-              VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &textureImage, &textureImageMemory);
-
-  // copy staging area to image using transition layout
-  VkImageLayout oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  VkImageLayout newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-  TransitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, oldLayout, newLayout);
-
-  CopyBufferToImage(stagingBuffer, textureImage, texWidth, texHeight);
-
-  oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-  newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-  TransitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, oldLayout, newLayout);
-
-  // cleanup
-  stbi_image_free(pixels);
-  vkDestroyBuffer(device, stagingBuffer, nullptr);
-  vkFreeMemory(device, stagingBufferMemory, nullptr);
-}
-
-void CreateTextureImageView() { textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT); }
-
-void CreateTextureSampler() {
-  VkPhysicalDeviceProperties properties = {};
-  vkGetPhysicalDeviceProperties(physicalDevice, &properties);
-
-  VkSamplerCreateInfo samplerInfo = {
-      .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-      .magFilter = VK_FILTER_LINEAR,
-      .minFilter = VK_FILTER_LINEAR,
-      .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-      .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-      .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-      .anisotropyEnable = VK_FALSE,
-      .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
-      .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
-      .unnormalizedCoordinates = VK_FALSE,
-      .compareOp = VK_COMPARE_OP_ALWAYS,
-      .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-      .minLod = 0.0f,
-      .maxLod = VK_LOD_CLAMP_NONE,
-  };
-
-  err = vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler);
-  handleError();
 }
 
 void cleanupVulkan() {
@@ -1887,10 +1746,6 @@ void cleanupVulkan() {
     vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
   }
   vkDestroyDescriptorPool(device, descriptorPool, nullptr);
-  vkDestroySampler(device, textureSampler, nullptr);
-  vkDestroyImageView(device, textureImageView, nullptr);
-  vkDestroyImage(device, textureImage, nullptr);
-  vkFreeMemory(device, textureImageMemory, nullptr);
   vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
   vkDestroyBuffer(device, indexBuffer, nullptr);
   vkFreeMemory(device, indexBufferMemory, nullptr);
@@ -1926,9 +1781,6 @@ void initVulkan() {
   CreateDescriptorSetLayout();
   CreatePipeline();
   CreateCommandPool();
-  CreateTextureImage();
-  CreateTextureImageView();
-  CreateTextureSampler();
   LoadModel();
   CreateVertexBuffer();
   CreateIndexBuffer();
